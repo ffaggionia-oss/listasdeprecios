@@ -239,7 +239,7 @@ function quoteNum(){
 }
 
 /* ── Lista C uses ml, A+B use m2 ── */
-function listaUnit(lista){ return 'm²'; }
+function listaUnit(lista){ return lista==='C'?'mt/l':'m²'; }
 function listaCls(lista){ return lista==='A'?'tag-a':lista==='B'?'tag-b':'tag-c'; }
 function listaColor(lista){ return lista==='A'?'#1A6B4A':lista==='B'?'#1A4A8A':'#C87941'; }
 
@@ -352,11 +352,13 @@ function updateModalPrice(){
   var mult=(1+(lf?0.1:0)+(em?0.04:0));
   var lista=document.getElementById('am-lista').value||'A';
   var base=(lista==='A'?p.lista_a_m2:lista==='B'?p.lista_b_m2:p.lista_c_m2);
-  var precio=base?Math.round(base*mult*100)/100:null;
+  var precio_m2=base?Math.round(base*mult*100)/100:null;
+  var precio_ml=(lista==='C'&&p.lista_c_ml)?Math.round(p.lista_c_ml*mult*100)/100:null;
+  var precioShow=(lista==='C'&&precio_ml)?precio_ml:precio_m2;
   var unit=listaUnit(lista);
   var el=document.getElementById('am-price-preview');
   var color=listaColor(lista);
-  if(el) el.innerHTML=precio?('<span style="color:'+color+'">$ '+fmtNum(precio)+' / '+unit+'</span>'):'';
+  if(el) el.innerHTML=precioShow?('<span style="color:'+color+'">$ '+fmtNum(precioShow)+' / '+unit+'</span>'):'';
 }
 function renderQuotePanel(){
   var total=quote.items.reduce(function(s,i){return s+i.total;},0);
@@ -374,7 +376,7 @@ function renderQuotePanel(){
       +'<td style="padding:10px 8px;border-bottom:1px solid #F0E8D8;text-align:center">'
       +'<span style="background:'+bg+';color:'+color+';font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px">'+it.lista+'</span>'
       +'</td>'
-      +'<td style="padding:10px 8px;border-bottom:1px solid #F0E8D8;text-align:right;font-size:12px;color:#5C4A36">'+fmtNum(it.precio)+'<br><span style="font-size:10px;color:#A89880">/'+it.unit+'</span></td>'
+      +'<td style="padding:10px 8px;border-bottom:1px solid #F0E8D8;text-align:right;font-size:12px;color:#5C4A36">'+fmtNum(it.precio)+'<br><span style="font-size:10px;color:#A89880">/'+it.unit+'</span>'+(it.lista==='C'&&it.precio_m2?'<br><span style="font-size:9px;color:#C4A882">'+fmtNum(it.precio_m2)+'/m²</span>':'')+'</td>'
       +'<td style="padding:10px 8px;border-bottom:1px solid #F0E8D8;text-align:center">'
       +'<input type="number" value="'+it.qty+'" min="0.1" step="0.1" '
       +'style="width:60px;padding:4px 6px;border:1.5px solid #D4C8B8;border-radius:6px;font-size:13px;text-align:center" '
@@ -422,13 +424,13 @@ function generatePDF(){
     return '<tr>'
       +'<td style="padding:10px 14px;border-bottom:1px solid #F0E8D8;vertical-align:top">'
       +'<div style="font-weight:700;font-size:13px;color:#1A1410">'+it.madera+' \u2014 '+it.perfil+'</div>'
-      +'<div style="font-size:11px;color:#7A5C3E;margin-top:2px">'+it.linea+'</div>'
+      +'<div style="font-size:11px;color:#7A5C3E;margin-top:2px">'+dn(it.linea)+'</div>'
       +'<div style="font-size:11px;color:#A89880;margin-top:1px">'+it.medidas+(it.largos?' \u00b7 '+it.largos:'')+(it.largo_fijo?' \u00b7 Largo Fijo +10%':'')+(it.end_match?' \u00b7 EndMatch +4%':'')+'</div>'
       +'</td>'
       +'<td style="padding:10px 14px;border-bottom:1px solid #F0E8D8;text-align:center;vertical-align:middle">'
       +'<span style="background:'+bg+';color:'+color+';font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px">Lista '+it.lista+'</span>'
       +'</td>'
-      +'<td style="padding:10px 14px;border-bottom:1px solid #F0E8D8;text-align:right;vertical-align:middle;font-size:13px;color:#5C4A36">$ '+fmtNum(it.precio)+' / '+it.unit+'</td>'
+      +'<td style="padding:10px 14px;border-bottom:1px solid #F0E8D8;text-align:right;vertical-align:middle;font-size:13px;color:#5C4A36">$ '+fmtNum(it.precio)+' / '+it.unit+(it.lista==='C'&&it.precio_m2?'<br><span style="font-size:10px;color:#A89880">$ '+fmtNum(it.precio_m2)+' / m²</span>':'')+'</td>'
       +'<td style="padding:10px 14px;border-bottom:1px solid #F0E8D8;text-align:center;vertical-align:middle;font-size:13px">'+fmtNum(it.qty)+' '+it.unit+'</td>'
       +'<td style="padding:10px 14px;border-bottom:1px solid #F0E8D8;text-align:right;vertical-align:middle;font-size:14px;font-weight:700;color:#1A1410">$ '+fmtNum(it.total)+'</td>'
       +'</tr>';
