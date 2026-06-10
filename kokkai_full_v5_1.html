@@ -296,16 +296,18 @@ function confirmAdd(){
   var em=document.getElementById('am-em').checked;
   var mult=(1+(lf?0.1:0)+(em?0.04:0));
   var basePrice=(lista==='A'?p.lista_a_m2:lista==='B'?p.lista_b_m2:p.lista_c_m2);
-  var precio=Math.round(basePrice*mult*100)/100;
+  var precio_m2=Math.round(basePrice*mult*100)/100;
+  var precio_ml=(lista==='C'&&p.lista_c_ml)?Math.round(p.lista_c_ml*mult*100)/100:null;
+  var precioShow=(lista==='C'&&precio_ml)?precio_ml:precio_m2;
   var unit=listaUnit(lista);
   quote.items.push({
     pid:pid, lista:lista,
     madera:p.madera, perfil:p.perfil, linea:p.linea,
     medidas:p.medidas, largos:p.largos,
     largo_fijo:lf, end_match:em,
-    precio:precio, unit:unit,
+    precio:precioShow, precio_m2:precio_m2, unit:unit,
     qty:qty,
-    total:Math.round(precio*qty*100)/100
+    total:Math.round(precio_m2*qty*100)/100
   });
   closeAddModal();
   renderQuoteBtn();
@@ -471,7 +473,7 @@ function generatePDF(){
     +'<div style="display:flex;justify-content:flex-end;margin-bottom:32px">'
     +'<div style="background:#1A1410;color:#fff;padding:14px 24px;border-radius:8px;text-align:right">'
     +'<div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#C4A882;margin-bottom:4px">Total USD</div>'
-    +'<div style="font-size:9px;color:#A89880;margin-top:4px;font-style:italic">* Los precios en m² corresponden al ancho bruto de la tabla.</div>'
+    +'<div style="font-size:9px;color:#A89880;margin-top:4px;font-style:italic">* Lista C: precio en mt/l (ancho comercial). El total se calcula en m².</div>'
     +'<div style="font-size:22px;font-weight:700">$ '+fmtNum(total)+'</div>'
     +'</div></div>'
     +'<div style="border-top:1px solid #E8E0D5;padding-top:16px;font-size:11px;color:#A89880;line-height:1.6">'
