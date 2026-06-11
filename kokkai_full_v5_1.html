@@ -425,69 +425,144 @@ function confirmAdd(){
   renderQuoteBtn();
 }
 
-/* ── QUOTE PANEL ─────────────────────────────── */
-var _cuitLookupTimer=null;
+/* ── CUIT LOOKUP ─────────────────────────────── */
+var _cuitTimer=null;
 function onCuitInput(val){
-  var digits=val.replace(/\D/g,'');
+  var d=val.replace(/\D/g,'');
   var btn=document.getElementById('arca-btn');
-  if(btn) btn.style.opacity=(digits.length>=10)?'1':'0.4';
-  // Auto-lookup when 11 digits are entered
-  clearTimeout(_cuitLookupTimer);
-  if(digits.length===11){
-    _cuitLookupTimer=setTimeout(function(){lookupCuit(true);},600);
-  }
+  if(btn) btn.style.opacity=(d.length===11)?'1':'0.5';
+  clearTimeout(_cuitTimer);
+  if(d.length===11) _cuitTimer=setTimeout(function(){lookupCuit(true);},800);
+  else if(d.length>0) _cuitStatus('','');
 }
+
+function _cuitStatus(type,msg){
+  var el=document.getElementById('arca-status');
+  if(!el)return;
+  if(!msg){el.style.display='none';el.textContent='';return;}
+  el.style.display='block';
+  var map={ok:'#1a7a3c',err:'#b0281a',loading:'#888',warn:'#8a5e1a'};
+  el.style.color=map[type]||'#888';
+  el.textContent=msg;
+}
+
+function _applyContrib(c){
+  // c = contribuyente object from any API shape
+  var nombre=c.nombre||c.razonSocial||c.apellido||'';
+  if(c.apellido&&c.nombre&&c.apellido!==c.nombre) nombre=c.apellido+', '+c.nombre;
+
+  function set(id,v){var e=document.getElementById(id);if(e&&v)e.value=(v+'').trim();}
+  set('qc-client',nombre);
+
+  // IVA
+  var ivaEl=document.getElementById('qc-iva');
+  var ivaCode=c.tipoClave||'';
+  var ivaDescObj=c.tipoIva||c.iva||null;
+  var ivaStr='';
+  if(ivaDescObj){
+    var code=String(ivaDescObj.codigo||ivaDescObj.id||ivaDescObj||'');
+    var ivaMap={'1':'Responsable Inscripto','2':'Responsable Inscripto','3':'Responsable Inscripto',
+                '4':'Exento','5':'Exento','6':'Consumidor Final','13':'Monotributista','14':'Monotributista'};
+    ivaStr=ivaMap[code]||ivaDescObj.descripcion||ivaDescObj.desc||String(ivaDescObj);
+  }
+  if(ivaStr&&ivaEl){
+    for(var i=0;i<ivaEl.options.length;i++){
+      if(ivaEl.options[i].text.toLowerCase().indexOf(ivaStr.toLowerCase().split(' ')[0])>=0){
+        ivaEl.selectedIndex=i;break;
+      }
+    }
+  }
+
+  // Domicilio: try both domicilioFiscal (TangoFactura) and domicilio array (AFIP REST)
+  var df=c.domicilioFiscal||null;
+  if(!df&&c.domicilio&&c.domicilio.length) df=c.domicilio[0];
+  if(df){
+    var dir=(df.direccion||df.calle||'').trim();
+    if(df.numero&&df.numero!=='0'&&df.numero!=='') dir+=' '+df.numero;
+    if(df.piso) dir+=' Piso '+df.piso;
+    if(df.departamento) dir+=' Dpto '+df.departamento;
+    set('qc-domicilio',dir);
+    set('qc-localidad',df.descripcionLocalidad||df.localidad||df.ciudad||'');
+    set('qc-provincia',df.descripcionProvincia||df.provincia||'');
+  }
+  return nombre;
+}
+
 function lookupCuit(auto){
-  var cuit=document.getElementById('qc-cuit').value.replace(/[\.\-\s]/g,'');
-  if(cuit.length<10){if(!auto)alert('Ingresá un CUIT válido (11 dígitos)');return;}
-  var status=document.getElementById('arca-status');
-  if(status){status.style.display='block';status.style.color='var(--mid)';status.textContent='Consultando ARCA…';}
-  fetch('https://afip.tangofactura.com/Rest/GetContribuyenteFull?cuit='+cuit)
-    .then(function(r){return r.json();})
+  var raw=document.getElementById('qc-cuit').value;
+  var cuit=raw.replace(/[\.\-\s]/g,'');
+  if(cuit.length!==11){
+    if(!auto) _cuitStatus('err','CUIT inválido — debe tener 11 dígitos');
+    return;
+  }
+  _cuitStatus('loading','Consultando padrón…');
+
+  // Strategy: try soa.afip.gob.ar up to 3 times (CORS is inconsistent / load-balanced),
+  // then fall back to TangoFactura
+  var attempt=0;
+  var maxRetries=3;
+
+  function tryAfip(){
+    attempt++;
+    fetch('https://soa.afip.gob.ar/sr-padron/v2/persona/'+cuit,{
+      headers:{'Accept':'application/json'},
+      cache:'no-cache'
+    })
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.json();
+    })
     .then(function(d){
-      if(d&&d.contribuyente&&d.contribuyente.nombre){
-        var c=d.contribuyente;
-        // Razón social
-        var clientEl=document.getElementById('qc-client');
-        if(clientEl&&(!clientEl.value||clientEl.value==='')) clientEl.value=c.nombre||'';
-        else if(clientEl) clientEl.value=c.nombre||'';
-        // IVA
-        var ivaEl=document.getElementById('qc-iva');
-        if(ivaEl&&c.tipoIva){
-          var ivaMap={'1':'Responsable Inscripto','4':'Exento','6':'Consumidor Final','13':'Monotributista'};
-          var mapped=ivaMap[String(c.tipoIva.codigo)]||c.tipoIva.descripcion||'';
-          for(var i=0;i<ivaEl.options.length;i++){if(ivaEl.options[i].text.indexOf(mapped)>=0){ivaEl.selectedIndex=i;break;}}
-        }
-        // Domicilio fiscal
-        if(c.domicilioFiscal){
-          var df=c.domicilioFiscal;
-          // Build address string: calle + numero
-          var calle=(df.direccion||'').trim();
-          var domEl=document.getElementById('qc-domicilio');
-          if(domEl&&calle) domEl.value=calle;
-          // Localidad
-          var localEl=document.getElementById('qc-localidad');
-          if(localEl&&df.descripcionLocalidad) localEl.value=df.descripcionLocalidad;
-          // Provincia
-          var provEl=document.getElementById('qc-provincia');
-          if(provEl&&df.descripcionProvincia) provEl.value=df.descripcionProvincia;
-          // CP – if there's a field for it
-          var cpEl=document.getElementById('qc-cp');
-          if(cpEl&&df.codigoPostal) cpEl.value=df.codigoPostal;
-        }
-        // Status feedback
-        var parts=[c.nombre];
-        if(c.domicilioFiscal&&c.domicilioFiscal.descripcionProvincia) parts.push(c.domicilioFiscal.descripcionProvincia);
-        if(status){status.style.color='var(--green)';status.textContent='✓ Datos completados · '+parts.join(' · ');}
+      // AFIP REST shape: { data: { nombre, tipoIva, domicilioFiscal, ... }, errorConstancia, ... }
+      var contrib=null;
+      if(d&&d.data) contrib=d.data;
+      else if(d&&(d.nombre||d.razonSocial)) contrib=d;
+      if(contrib&&(contrib.nombre||contrib.razonSocial)){
+        var nombre=_applyContrib(contrib);
+        _cuitStatus('ok','✓ '+nombre);
       } else {
-        if(status){status.style.color='#c0392b';status.textContent='No se encontraron datos para ese CUIT';}
-        if(!auto) window.open('https://seti.afip.gob.ar/padron-puc-constancia-internet/ConsultaConstanciaAction.do?cuit='+cuit,'_blank');
+        // Got a response but no person found
+        _cuitStatus('err','CUIT no encontrado en padrón AFIP');
       }
     })
-    .catch(function(){
-      if(status){status.style.color='var(--amber)';status.textContent='API no disponible — abriendo ARCA en nueva pestaña';}
-      if(!auto) window.open('https://seti.afip.gob.ar/padron-puc-constancia-internet/ConsultaConstanciaAction.do?cuit='+cuit,'_blank');
+    .catch(function(e){
+      if(attempt<maxRetries){
+        // Retry — AFIP load balancer may have CORS on next hit
+        setTimeout(tryAfip, 300);
+      } else {
+        // Fall back to TangoFactura
+        tryTango();
+      }
     });
+  }
+
+  function tryTango(){
+    fetch('https://afip.tangofactura.com/Rest/GetContribuyenteFull?cuit='+cuit,{
+      headers:{'Accept':'application/json'},
+      cache:'no-cache'
+    })
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.json();
+    })
+    .then(function(d){
+      // TangoFactura shape: { contribuyente: { nombre, tipoIva, domicilioFiscal } }
+      var contrib=null;
+      if(d&&d.contribuyente) contrib=d.contribuyente;
+      else if(d&&(d.nombre||d.razonSocial)) contrib=d;
+      if(contrib&&(contrib.nombre||contrib.razonSocial)){
+        var nombre=_applyContrib(contrib);
+        _cuitStatus('ok','✓ '+nombre);
+      } else {
+        _cuitStatus('err','Sin datos para ese CUIT');
+      }
+    })
+    .catch(function(e){
+      _cuitStatus('err','No se pudo conectar al padrón. Verificá tu conexión.');
+    });
+  }
+
+  tryAfip();
 }
 function renderQuoteBtn(){
   var btn=document.getElementById('quote-fab');
