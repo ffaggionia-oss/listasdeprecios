@@ -231,11 +231,11 @@ mark{background:#FFF3B0;color:inherit;border-radius:2px;padding:0 1px}
         <div class="qc-field" style="flex:1">
           <label>CUIT</label>
           <input id="qc-cuit" type="text" placeholder="20-12345678-9" oninput="onCuitInput(this.value)">
-          <button onclick="lookupCuit()" title="Consultar en ARCA" style="background:none;border:var(--border);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:11px;color:var(--mid);white-space:nowrap;margin-left:4px" id="arca-btn">🔍 ARCA</button>
+          <button onclick="lookupCuit(false)" title="Consultar en ARCA" style="background:none;border:var(--border);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:11px;color:var(--mid);white-space:nowrap;margin-left:4px" id="arca-btn">🔍 ARCA</button>
         </div>
-        <div id="arca-status" style="font-size:11px;color:var(--mid);padding:4px 14px 6px;display:none"></div>
         <div class="qc-field" style="flex:1"><label>IVA</label><select id="qc-iva" style="border:1.5px solid #D4C8B8;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1A1410;background:#F5F2EE;width:100%;outline:none"><option>Consumidor Final</option><option>Responsable Inscripto</option><option>Monotributista</option><option>Exento</option></select></div>
       </div>
+      <div id="arca-status" style="padding:4px 14px 2px;display:none;font-size:11px;color:var(--mid);border-radius:4px;margin-bottom:2px"></div>
       <div style="display:flex;gap:10px">
         <div class="qc-field" style="flex:1"><label>Teléfono</label><input id="qc-contact" type="text" placeholder="+54 9 11..."></div>
         <div class="qc-field" style="flex:1"><label>Email</label><input id="qc-email" type="text" placeholder="cliente@..."></div>
@@ -426,13 +426,20 @@ function confirmAdd(){
 }
 
 /* ── QUOTE PANEL ─────────────────────────────── */
+var _cuitLookupTimer=null;
 function onCuitInput(val){
+  var digits=val.replace(/\D/g,'');
   var btn=document.getElementById('arca-btn');
-  if(btn) btn.style.opacity=(val.replace(/\D/g,'').length>=10)?'1':'0.4';
+  if(btn) btn.style.opacity=(digits.length>=10)?'1':'0.4';
+  // Auto-lookup when 11 digits are entered
+  clearTimeout(_cuitLookupTimer);
+  if(digits.length===11){
+    _cuitLookupTimer=setTimeout(function(){lookupCuit(true);},600);
+  }
 }
-function lookupCuit(){
+function lookupCuit(auto){
   var cuit=document.getElementById('qc-cuit').value.replace(/[\.\-\s]/g,'');
-  if(cuit.length<10){alert('Ingresá un CUIT válido');return;}
+  if(cuit.length<10){if(!auto)alert('Ingresá un CUIT válido (11 dígitos)');return;}
   var status=document.getElementById('arca-status');
   if(status){status.style.display='block';status.style.color='var(--mid)';status.textContent='Consultando ARCA…';}
   fetch('https://afip.tangofactura.com/Rest/GetContribuyenteFull?cuit='+cuit)
@@ -440,23 +447,46 @@ function lookupCuit(){
     .then(function(d){
       if(d&&d.contribuyente&&d.contribuyente.nombre){
         var c=d.contribuyente;
-        document.getElementById('qc-client').value=c.nombre||'';
+        // Razón social
+        var clientEl=document.getElementById('qc-client');
+        if(clientEl&&(!clientEl.value||clientEl.value==='')) clientEl.value=c.nombre||'';
+        else if(clientEl) clientEl.value=c.nombre||'';
+        // IVA
         var ivaEl=document.getElementById('qc-iva');
         if(ivaEl&&c.tipoIva){
           var ivaMap={'1':'Responsable Inscripto','4':'Exento','6':'Consumidor Final','13':'Monotributista'};
-          var mapped=ivaMap[String(c.tipoIva.codigo)]||c.tipoIva.descripcion;
+          var mapped=ivaMap[String(c.tipoIva.codigo)]||c.tipoIva.descripcion||'';
           for(var i=0;i<ivaEl.options.length;i++){if(ivaEl.options[i].text.indexOf(mapped)>=0){ivaEl.selectedIndex=i;break;}}
         }
-        if(status){status.style.color='var(--green)';status.textContent='✓ '+c.nombre+(c.domicilioFiscal?' · '+c.domicilioFiscal.descripcionProvincia:'');}
+        // Domicilio fiscal
+        if(c.domicilioFiscal){
+          var df=c.domicilioFiscal;
+          // Build address string: calle + numero
+          var calle=(df.direccion||'').trim();
+          var domEl=document.getElementById('qc-domicilio');
+          if(domEl&&calle) domEl.value=calle;
+          // Localidad
+          var localEl=document.getElementById('qc-localidad');
+          if(localEl&&df.descripcionLocalidad) localEl.value=df.descripcionLocalidad;
+          // Provincia
+          var provEl=document.getElementById('qc-provincia');
+          if(provEl&&df.descripcionProvincia) provEl.value=df.descripcionProvincia;
+          // CP – if there's a field for it
+          var cpEl=document.getElementById('qc-cp');
+          if(cpEl&&df.codigoPostal) cpEl.value=df.codigoPostal;
+        }
+        // Status feedback
+        var parts=[c.nombre];
+        if(c.domicilioFiscal&&c.domicilioFiscal.descripcionProvincia) parts.push(c.domicilioFiscal.descripcionProvincia);
+        if(status){status.style.color='var(--green)';status.textContent='✓ Datos completados · '+parts.join(' · ');}
       } else {
         if(status){status.style.color='#c0392b';status.textContent='No se encontraron datos para ese CUIT';}
-        // Open ARCA as fallback
-        window.open('https://seti.afip.gob.ar/padron-puc-constancia-internet/ConsultaConstanciaAction.do?cuit='+cuit,'_blank');
+        if(!auto) window.open('https://seti.afip.gob.ar/padron-puc-constancia-internet/ConsultaConstanciaAction.do?cuit='+cuit,'_blank');
       }
     })
     .catch(function(){
       if(status){status.style.color='var(--amber)';status.textContent='API no disponible — abriendo ARCA en nueva pestaña';}
-      window.open('https://seti.afip.gob.ar/padron-puc-constancia-internet/ConsultaConstanciaAction.do?cuit='+cuit,'_blank');
+      if(!auto) window.open('https://seti.afip.gob.ar/padron-puc-constancia-internet/ConsultaConstanciaAction.do?cuit='+cuit,'_blank');
     });
 }
 function renderQuoteBtn(){
