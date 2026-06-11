@@ -187,8 +187,28 @@ mark{background:#FFF3B0;color:inherit;border-radius:2px;padding:0 1px}
     <div id="am-price-preview" style="font-size:15px;font-weight:700;margin-bottom:14px;min-height:22px"></div>
     <label class="am-label" id="am-qty-label">Cantidad (m&sup2;)</label>
     <input class="am-input" type="number" id="am-qty" placeholder="Ej: 25.5" min="0.1" step="0.1">
-    <label class="am-label" style="margin-top:10px">Observaciones <span style="font-size:11px;color:#A89880;font-weight:400">(opcional)</span></label>
-    <textarea id="am-obs" rows="2" placeholder="Ej: 20% desperdicio incluído, destino exterior..." style="border:1.5px solid #D4C8B8;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1A1410;background:#F5F2EE;resize:vertical;width:100%;outline:none;margin-bottom:14px;transition:border-color .15s" onfocus="this.style.borderColor='#7A5C3E'" onblur="this.style.borderColor='#D4C8B8'"></textarea>
+    <div style="margin-top:8px;margin-bottom:4px">
+      <label class="am-label" style="margin-bottom:4px">Observaciones del ítem <span style="font-size:11px;color:#aaa;font-weight:400">(opcional)</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px" id="obs-tags-container"></div>
+      <select id="obs-preset" onchange="addObsTag()" style="width:100%;padding:6px 10px;border:var(--border);border-radius:var(--radius);font-size:12px;background:#fff;color:var(--ink);outline:none;margin-bottom:6px">
+        <option value="">+ Agregar observación rápida…</option>
+        <option value="Incluye 10% de desperdicio">Incluye 10% de desperdicio</option>
+        <option value="Incluye 15% de desperdicio">Incluye 15% de desperdicio</option>
+        <option value="Incluye 20% de desperdicio">Incluye 20% de desperdicio</option>
+        <option value="Precio sujeto a variación cambiaria">Precio sujeto a variación cambiaria</option>
+        <option value="Material para exterior">Material para exterior</option>
+        <option value="Material para interior">Material para interior</option>
+        <option value="Requiere tratamiento Cutek">Requiere tratamiento Cutek</option>
+        <option value="Incluye Cutek CD50 2 manos">Incluye Cutek CD50 2 manos</option>
+        <option value="Stock sujeto a disponibilidad">Stock sujeto a disponibilidad</option>
+        <option value="Entrega en Showroom Tronador">Entrega en Showroom Tronador</option>
+        <option value="Flete a coordinar por separado">Flete a coordinar por separado</option>
+        <option value="Precio cotizado en USD billete">Precio cotizado en USD billete</option>
+        <option value="End Match incluido">End Match incluido</option>
+        <option value="Largo fijo — sin acumulación de cortes">Largo fijo — sin acumulación de cortes</option>
+      </select>
+      <textarea id="am-obs" rows="2" placeholder="Observación personalizada o más detalles…" style="border:var(--border);border-radius:var(--radius);padding:8px 10px;font-size:12px;font-family:inherit;color:var(--ink);background:var(--cream);resize:vertical;width:100%;outline:none;margin-bottom:10px;transition:border-color .15s" onfocus="this.style.borderColor='var(--ink)'" onblur="this.style.borderColor='var(--light)'"></textarea>
+    </div>
     <div class="am-actions">
       <button class="am-btn am-cancel" onclick="closeAddModal()">Cancelar</button>
       <button class="am-btn am-confirm" onclick="confirmAdd()">Agregar</button>
@@ -208,7 +228,12 @@ mark{background:#FFF3B0;color:inherit;border-radius:2px;padding:0 1px}
       <div class="qp-section-title">Datos del cliente</div>
       <div class="qc-field"><label>Señor/es (Razón Social)</label><input id="qc-client" type="text" placeholder="Nombre / Razón social"></div>
       <div style="display:flex;gap:10px">
-        <div class="qc-field" style="flex:1"><label>CUIT</label><input id="qc-cuit" type="text" placeholder="20-12345678-9"></div>
+        <div class="qc-field" style="flex:1">
+          <label>CUIT</label>
+          <input id="qc-cuit" type="text" placeholder="20-12345678-9" oninput="onCuitInput(this.value)">
+          <button onclick="lookupCuit()" title="Consultar en ARCA" style="background:none;border:var(--border);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:11px;color:var(--mid);white-space:nowrap;margin-left:4px" id="arca-btn">🔍 ARCA</button>
+        </div>
+        <div id="arca-status" style="font-size:11px;color:var(--mid);padding:4px 14px 6px;display:none"></div>
         <div class="qc-field" style="flex:1"><label>IVA</label><select id="qc-iva" style="border:1.5px solid #D4C8B8;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1A1410;background:#F5F2EE;width:100%;outline:none"><option>Consumidor Final</option><option>Responsable Inscripto</option><option>Monotributista</option><option>Exento</option></select></div>
       </div>
       <div style="display:flex;gap:10px">
@@ -278,6 +303,7 @@ const LOGO="/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABt
 var cat='',q='',madera='',sort='',expanded=null;
 var quote={items:[],client:'',cuit:'',iva:'Consumidor Final',contact:'',email:'',domicilio:'',localidad:'',provincia:'',date:'',num:'',payment:'',delivery:'',deadline:'',transporte:'',vencimiento:'',obs:''};
 var paymentTags=[];
+var obsTags=[];
 var quoteVisible=false;
 
 function dn(s){ return s?s.replace(/Maximo/g,'VJ Group'):s; }
@@ -385,7 +411,7 @@ function confirmAdd(){
   var precio_ml=(lista==='C'&&p.lista_c_ml)?Math.round(p.lista_c_ml*mult*100)/100:null;
   var precioShow=(lista==='C'&&precio_ml)?precio_ml:precio_m2;
   var unit=listaUnit(lista);
-  var obs=document.getElementById('am-obs').value.trim();
+  var obs=getObsValue();
   quote.items.push({
     pid:pid, lista:lista,
     madera:p.madera, perfil:p.perfil, linea:p.linea,
@@ -400,6 +426,39 @@ function confirmAdd(){
 }
 
 /* ── QUOTE PANEL ─────────────────────────────── */
+function onCuitInput(val){
+  var btn=document.getElementById('arca-btn');
+  if(btn) btn.style.opacity=(val.replace(/\D/g,'').length>=10)?'1':'0.4';
+}
+function lookupCuit(){
+  var cuit=document.getElementById('qc-cuit').value.replace(/[\.\-\s]/g,'');
+  if(cuit.length<10){alert('Ingresá un CUIT válido');return;}
+  var status=document.getElementById('arca-status');
+  if(status){status.style.display='block';status.style.color='var(--mid)';status.textContent='Consultando ARCA…';}
+  fetch('https://afip.tangofactura.com/Rest/GetContribuyenteFull?cuit='+cuit)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.contribuyente&&d.contribuyente.nombre){
+        var c=d.contribuyente;
+        document.getElementById('qc-client').value=c.nombre||'';
+        var ivaEl=document.getElementById('qc-iva');
+        if(ivaEl&&c.tipoIva){
+          var ivaMap={'1':'Responsable Inscripto','4':'Exento','6':'Consumidor Final','13':'Monotributista'};
+          var mapped=ivaMap[String(c.tipoIva.codigo)]||c.tipoIva.descripcion;
+          for(var i=0;i<ivaEl.options.length;i++){if(ivaEl.options[i].text.indexOf(mapped)>=0){ivaEl.selectedIndex=i;break;}}
+        }
+        if(status){status.style.color='var(--green)';status.textContent='✓ '+c.nombre+(c.domicilioFiscal?' · '+c.domicilioFiscal.descripcionProvincia:'');}
+      } else {
+        if(status){status.style.color='#c0392b';status.textContent='No se encontraron datos para ese CUIT';}
+        // Open ARCA as fallback
+        window.open('https://contribuyentes.arca.gob.ar/wps/portal/ol/consultacontribuyentes/constanciainscripcion!ut/p/b1/?cuit='+cuit,'_blank');
+      }
+    })
+    .catch(function(){
+      if(status){status.style.color='var(--amber)';status.textContent='API no disponible — abriendo ARCA en nueva pestaña';}
+      window.open('https://contribuyentes.arca.gob.ar/wps/portal/ol/consultacontribuyentes/constanciainscripcion!ut/p/b1/?cuit='+cuit,'_blank');
+    });
+}
 function renderQuoteBtn(){
   var btn=document.getElementById('quote-fab');
   var n=quote.items.length;
@@ -438,6 +497,49 @@ function syncPaymentInput(){
 function applyPaymentPreset(){
   // kept for compatibility, now handled by addPaymentTag
 }
+function addObsTag(){
+  var sel=document.getElementById('obs-preset');
+  var val=sel.value;
+  if(!val)return;
+  if(obsTags.indexOf(val)<0){
+    obsTags.push(val);
+    renderObsTags();
+    syncObsInput();
+  }
+  sel.value='';
+}
+function removeObsTag(idx){
+  obsTags.splice(idx,1);
+  renderObsTags();
+  syncObsInput();
+}
+function renderObsTags(){
+  var c=document.getElementById('obs-tags-container');
+  if(!c)return;
+  c.innerHTML=obsTags.map(function(t,i){
+    return '<span class="pay-tag" style="background:#3B5A8A;font-size:10.5px">'+t+'<button class="pay-tag-x" onclick="removeObsTag('+i+')" type="button">&times;</button></span>';
+  }).join('');
+}
+function syncObsInput(){
+  var inp=document.getElementById('am-obs');
+  if(inp){
+    var custom=inp.value.trim();
+    var combined=obsTags.slice();
+    // Only sync the tags part, not the free-text
+  }
+}
+function getObsValue(){
+  var tags=obsTags.slice();
+  var custom=document.getElementById('am-obs');
+  if(custom&&custom.value.trim()) tags.push(custom.value.trim());
+  return tags.join(' · ');
+}
+function resetObsTags(){
+  obsTags=[];
+  renderObsTags();
+  var inp=document.getElementById('am-obs');
+  if(inp) inp.value='';
+}
 function openQuote(){
   if(!quote.date) quote.date=todayStr();
   if(!quote.num)  quote.num=quoteNum();
@@ -453,6 +555,14 @@ function openQuote(){
 function closeQuote(){
   quoteVisible=false;
   document.getElementById('quote-panel').style.display='none';
+}
+function editItemObs(idx){
+  var it=quote.items[idx];
+  var current=it.obs||'';
+  var newObs=window.prompt('Observaciones del ítem:\n'+it.madera+' — '+it.perfil, current);
+  if(newObs===null)return; // cancelled
+  quote.items[idx].obs=newObs.trim();
+  renderQuotePanel();
 }
 function removeItem(idx){
   quote.items.splice(idx,1);
