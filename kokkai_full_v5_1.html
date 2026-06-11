@@ -451,12 +451,12 @@ function lookupCuit(){
       } else {
         if(status){status.style.color='#c0392b';status.textContent='No se encontraron datos para ese CUIT';}
         // Open ARCA as fallback
-        window.open('https://contribuyentes.arca.gob.ar/wps/portal/ol/consultacontribuyentes/constanciainscripcion!ut/p/b1/?cuit='+cuit,'_blank');
+        window.open('https://seti.afip.gob.ar/padron-puc-constancia-internet/ConsultaConstanciaAction.do?cuit='+cuit,'_blank');
       }
     })
     .catch(function(){
       if(status){status.style.color='var(--amber)';status.textContent='API no disponible — abriendo ARCA en nueva pestaña';}
-      window.open('https://contribuyentes.arca.gob.ar/wps/portal/ol/consultacontribuyentes/constanciainscripcion!ut/p/b1/?cuit='+cuit,'_blank');
+      window.open('https://seti.afip.gob.ar/padron-puc-constancia-internet/ConsultaConstanciaAction.do?cuit='+cuit,'_blank');
     });
 }
 function renderQuoteBtn(){
