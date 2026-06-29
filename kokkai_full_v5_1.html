@@ -2,788 +2,236 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Kokkai &middot; Lista de Precios</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kokkai · Lista de Favoritos</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --cream:#F0EDE7;--ink:#111111;--mid:#6B6157;--light:#D8D1C7;
-  --gold:#BFA87A;--gold-dk:#9A8555;--green:#2A6B45;--blue:#1E4A8A;--amber:#8A5E1A;
-  --radius:6px;--border:1px solid var(--light);
-}
-body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.5}
-.hdr{background:var(--ink);padding:10px 18px;position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:12px;border-bottom:1px solid #2a2a2a}
-.hdr img{height:32px;width:auto}
-.hdr-count{margin-left:auto;font-size:11px;color:#888;letter-spacing:.03em}
-.toolbar{background:#fff;border-bottom:var(--border);padding:10px 16px;position:sticky;top:53px;z-index:40;display:flex;flex-direction:column;gap:8px}
-.search-box{display:flex;align-items:center;gap:8px;background:var(--cream);border:var(--border);border-radius:var(--radius);padding:0 12px;transition:border-color .15s}
-.search-box:focus-within{border-color:var(--ink)}
-.search-box svg{flex-shrink:0;color:var(--mid)}
-#q{border:none;background:none;padding:9px 0;font-size:13px;width:100%;outline:none;color:var(--ink)}
-#q::placeholder{color:#aaa}
-.clear-x{background:none;border:none;padding:4px;cursor:pointer;color:#aaa;display:none;font-size:18px;line-height:1;flex-shrink:0}
-.filters-row{display:flex;gap:8px}
-select{-webkit-appearance:none;appearance:none;background:#fff;border:var(--border);border-radius:var(--radius);padding:6px 26px 6px 10px;font-size:12px;color:var(--ink);cursor:pointer;outline:none;min-width:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B6157' stroke-width='1.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
-select:focus{border-color:var(--ink)}
-#f-madera{flex:1}
-.chips{background:#fff;border-bottom:var(--border);padding:8px 16px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;position:sticky;top:152px;z-index:39}
-.chips::-webkit-scrollbar{display:none}
-.chip{flex-shrink:0;padding:4px 12px;border-radius:20px;border:var(--border);font-size:11.5px;font-weight:500;cursor:pointer;background:#fff;color:var(--mid);transition:all .12s;white-space:nowrap;letter-spacing:.01em}
-.chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-.chip.fav-chip{border-color:var(--gold);color:var(--amber)}
-.chip.fav-chip.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
-#list{padding:10px 14px 100px}
-.empty{text-align:center;padding:60px 20px;color:#aaa;font-size:13px}
-.row{background:#fff;border-radius:var(--radius);border:var(--border);margin-bottom:7px;overflow:hidden}
-.row.is-fav{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
-.row-head{padding:11px 14px 10px;cursor:pointer;display:flex;align-items:flex-start;gap:10px}
-.row-info{flex:1;min-width:0}
-.row-cat{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#aaa;margin-bottom:2px}
-.row-name{font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row-sub{font-size:11.5px;color:var(--mid);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row-preview{display:flex;flex-direction:column;align-items:flex-end;flex-shrink:0;gap:1px}
-.prev-a{font-size:12px;font-weight:700;color:var(--green)}
-.prev-label{font-size:9.5px;color:#aaa;letter-spacing:.02em}
-.prev-note{font-size:9px;color:#bbb;letter-spacing:.01em}
-.row-chevron{color:var(--light);font-size:16px;flex-shrink:0;margin-top:2px;transition:transform .2s}
-.row-chevron.open{transform:rotate(180deg)}
-.fav-btn{background:none;border:none;cursor:pointer;font-size:18px;flex-shrink:0;padding:2px 4px;line-height:1;color:#ddd;transition:color .15s}
-.fav-btn.active{color:var(--gold)}
-.row-detail{display:none;border-top:var(--border)}
-.row-detail.open{display:block}
-.specs-bar{padding:7px 14px;display:flex;gap:6px;flex-wrap:wrap;background:#FAFAF8;border-bottom:var(--border)}
-.spec{font-size:11px;padding:2px 7px;border-radius:4px;background:#EDEBE5;color:var(--mid)}
-.spec b{color:var(--ink)}
-mark{background:#FFF3B0;color:inherit;border-radius:2px;padding:0 1px}
-#quote-fab{display:none;position:fixed;bottom:22px;right:18px;z-index:80;background:var(--ink);color:var(--gold);border:none;border-radius:50px;padding:13px 20px;font-size:12px;font-weight:600;letter-spacing:.04em;cursor:pointer;align-items:center;gap:8px;box-shadow:0 2px 16px rgba(0,0,0,.22)}
-#fab-count{background:var(--gold);color:var(--ink);border-radius:50%;width:19px;height:19px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
-#add-modal{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.45);align-items:flex-end;justify-content:center}
-.am-sheet{background:#fff;border-radius:12px 12px 0 0;padding:22px 18px 30px;width:100%;max-width:520px}
-.am-title{font-size:15px;font-weight:700;color:var(--ink);margin-bottom:2px}
-.am-sub{font-size:12px;color:var(--mid);margin-bottom:16px}
-.am-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#aaa;margin-bottom:4px;display:block}
-.am-select,.am-input{width:100%;padding:9px 11px;border:var(--border);border-radius:var(--radius);font-size:13px;color:var(--ink);background:var(--cream);outline:none;margin-bottom:12px}
-.am-actions{display:flex;gap:10px;margin-top:4px}
-.am-btn{flex:1;padding:11px;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;border:none}
-.am-cancel{background:var(--cream);color:var(--mid);border:var(--border)}
-.am-confirm{background:var(--ink);color:var(--gold);letter-spacing:.03em}
-#quote-panel{display:none;position:fixed;inset:0;z-index:90;background:var(--cream);overflow-y:auto}
-.qp-hdr{background:var(--ink);padding:13px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:2}
-.qp-hdr img{height:26px}
-.qp-title{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold)}
-.qp-back{background:none;border:1px solid rgba(191,168,122,.35);color:var(--gold);font-size:11px;font-weight:600;padding:5px 12px;border-radius:20px;cursor:pointer;white-space:nowrap;letter-spacing:.02em}
-.qp-close{margin-left:8px;background:none;border:none;color:var(--gold);font-size:20px;cursor:pointer;padding:0 4px;line-height:1}
-.qp-body{padding:14px 14px 30px}
-.qp-section{background:#fff;border-radius:var(--radius);border:var(--border);margin-bottom:10px;overflow:hidden}
-.qp-section-title{font-size:9.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#aaa;padding:9px 14px;border-bottom:var(--border);background:#FAFAF8}
-.qc-field{padding:9px 14px;border-bottom:1px solid #F2EEE8;display:flex;align-items:center;gap:10px}
-.qc-field:last-child{border-bottom:none}
-.qc-field label{font-size:11px;color:#aaa;width:105px;flex-shrink:0;letter-spacing:.01em}
-.qc-field input,.qc-field select,.qc-field textarea{flex:1;border:none;background:none;font-size:13px;color:var(--ink);outline:none;font-family:inherit}
-.qp-pdf-btn{width:100%;background:var(--ink);color:var(--gold);border:none;border-radius:var(--radius);padding:13px 20px;font-size:13px;font-weight:600;letter-spacing:.05em;cursor:pointer;margin-top:10px}
-.payment-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
-.pay-tag{display:inline-flex;align-items:center;gap:4px;background:var(--ink);color:#fff;font-size:11px;padding:3px 8px;border-radius:4px;font-weight:500}
-.pay-tag-x{background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:14px;line-height:1;padding:0 1px}
-.pay-tag-x:hover{color:#fff}
-.pay-dropdown{width:100%;padding:7px 10px;border:var(--border);border-radius:var(--radius);font-size:12px;background:#fff;color:var(--ink);outline:none;margin-bottom:4px}
-.iva-note{display:inline-block;font-size:9.5px;color:#aaa;background:#F5F2EC;border-radius:3px;padding:1px 5px;margin-left:4px;letter-spacing:.02em}
-#fav-banner{display:none;background:linear-gradient(90deg,#2a1f0a,#3d2e10);color:var(--gold);padding:6px 16px;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--gold-dk);position:sticky;top:196px;z-index:38}
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #F0D88A;
+    --black: #0A0A0A;
+    --bg: #F7F5F0;
+    --card: #FFFFFF;
+    --border: #E0DAD0;
+    --text: #1A1A1A;
+    --text2: #666;
+    --ml-color: #7B5EA7;
+    --ml-bg: #F3EEF9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header { background: var(--black); padding: 18px 24px; display: flex; align-items: center; gap: 16px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-mark { width: 38px; height: 38px; background: var(--gold); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; color: var(--black); letter-spacing: -1px; }
+  .logo-text { color: white; font-size: 20px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+  .logo-sub { color: var(--gold); font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
+  .header-right { margin-left: auto; color: var(--gold); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+
+  .controls { padding: 16px 24px 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-wrap input { width: 100%; padding: 10px 16px 10px 40px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 14px; background: white; outline: none; transition: border-color .2s; }
+  .search-wrap input:focus { border-color: var(--gold); }
+  .search-wrap::before { content: '🔍'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; }
+  .filter-btn { padding: 10px 16px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; background: white; cursor: pointer; transition: all .2s; white-space: nowrap; }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--gold); background: #FBF5E6; color: var(--black); font-weight: 600; }
+  .filter-btn.all.active { background: var(--gold); border-color: var(--gold); color: var(--black); }
+
+  .list-toggle { padding: 12px 24px 0; display: flex; gap: 8px; flex-wrap: wrap; }
+  .list-btn { padding: 7px 18px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 12px; font-weight: 600; cursor: pointer; background: white; letter-spacing: .5px; transition: all .2s; }
+  .list-btn.active-a { background: #1A1A1A; border-color: #1A1A1A; color: white; }
+  .list-btn.active-b { background: #2D5A8E; border-color: #2D5A8E; color: white; }
+  .list-btn.active-c { background: #7B5EA7; border-color: #7B5EA7; color: white; }
+  .list-btn:not([class*="active"]):hover { border-color: var(--gold); }
+
+  .stats { padding: 10px 24px; font-size: 12px; color: var(--text2); }
+  .stats span { color: var(--gold); font-weight: 700; }
+
+  .table-wrap { padding: 0 24px 40px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-top: 12px; min-width: 700px; }
+  thead { background: var(--black); }
+  thead th { color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 12px 14px; text-align: left; white-space: nowrap; }
+  thead th.price { text-align: right; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #FDFBF6; }
+  tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
+
+  .cat-label { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .8px; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; white-space: nowrap; }
+  .cat-dec { background: #E8F4E8; color: #2D7A2D; }
+  .cat-clh { background: #E8EEF4; color: #2D4E7A; }
+  .cat-cls { background: #F4EDE8; color: #7A4E2D; }
+  .cat-acc { background: #F0F0F0; color: #555; }
+
+  .madera { font-weight: 600; font-size: 13px; }
+  .perfil { color: var(--text2); font-size: 12px; margin-top: 2px; }
+  .linea-tag { font-size: 11px; color: #aaa; margin-top: 2px; }
+
+  td.price { text-align: right; font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .price-main { font-weight: 700; }
+  .price-sub { font-size: 10px; color: #aaa; font-weight: 400; display: block; margin-top: 2px; }
+
+  .unit-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+  .unit-m2 { background: #E8F4E8; color: #2D7A2D; }
+  .unit-ml { background: var(--ml-bg); color: var(--ml-color); }
+  .unit-un { background: #F0F0F0; color: #555; }
+
+  .largos { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  .no-results { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .section-header td { font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #999; padding: 7px 14px !important; background: #F5F0E8; }
+
+  .legend { padding: 8px 24px 0; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text2); }
+  .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
 </style>
 </head>
 <body>
-<div class="hdr">
-  <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgNTAiPgogIDxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iNTAiIGZpbGw9IiMxMTEiLz4KICA8dGV4dCB4PSIxNCIgeT0iMzQiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjIyIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjQkZBODdBIiBsZXR0ZXItc3BhY2luZz0iMyI+S09LS0FJPC90ZXh0Pgo8L3N2Zz4=" alt="Kokkai">
-  <span class="hdr-count" id="cnt"></span>
-</div>
-<div class="toolbar">
-  <div class="search-box">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input id="q" type="search" placeholder="Buscar &mdash; Ash, C7, 26x140&hellip;" autocomplete="off" autocorrect="off" spellcheck="false">
-    <button class="clear-x" id="clr">&times;</button>
-  </div>
-  <div class="filters-row">
-    <select id="f-madera" onchange="render()">
-<option value="">Todas las maderas</option>
-<option value="Clear Pine">Clear Pine</option>
-<option value="Thermo Ash">Thermo Ash</option>
-<option value="Thermo Pine">Thermo Pine</option>
-<option value="Thermo Radiata Pine (Clear)">Thermo Radiata Pine (Clear)</option>
-<option value="Thermo Spruce">Thermo Spruce</option>
-<option value="Thermo Spruce / Pine">Thermo Spruce / Pine</option>
-<optgroup label="─── Parky ───" disabled></optgroup>
-<option value="Pro">Parky Pro</option>
-<option value="Master">Parky Master</option>
-<option value="Summit">Parky Summit</option>
-<option value="Summit Walter">Parky Summit Walter</option>
-<option value="Deluxe">Parky Deluxe</option>
-</select>
-    <select id="f-sort">
-      <option value="">Sin orden</option>
-      <option value="asc">Precio A &uarr;</option>
-      <option value="desc">Precio A &darr;</option>
-    </select>
-  </div>
-</div>
-<div class="chips" id="chips">
-  <button class="chip on" data-cat="">Todo</button>
-  <button class="chip" data-cat="Decking">Decking</button>
-  <button class="chip" data-cat="Cladding Hardwood">Cladding HW</button>
-  <button class="chip" data-cat="Cladding Softwood">Cladding SW</button>
-  <button class="chip" data-cat="Parky">Parky</button>
-  <button class="chip fav-chip" id="fav-chip" data-cat="__favs__">&#9733; Favoritos</button>
-</div>
-<div id="fav-banner">&#9733; Mostrando solo favoritos</div>
-<div id="list"><div class="empty">Cargando&hellip;</div></div>
 
-<button id="quote-fab" onclick="openQuote()">
-  Cotizaci&oacute;n <span id="fab-count">0</span>
-</button>
-
-<div id="add-modal">
-  <div class="am-sheet">
-    <div class="am-title" id="am-title"></div>
-    <div class="am-sub" id="am-sub"></div>
-    <input type="hidden" id="am-pid">
-    <label class="am-label">Lista de precio</label>
-    <select class="am-select" id="am-lista" onchange="updateModalPrice();updateQtyLabel()"></select>
-    <label class="am-label">Surcharges</label>
-    <div style="display:flex;gap:12px;margin-bottom:14px">
-      <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#3B2A1A;cursor:pointer;user-select:none">
-        <input type="checkbox" id="am-lf" onchange="updateModalPrice()" style="width:16px;height:16px;accent-color:#9B6E1A;cursor:pointer">
-        <span>Largo Fijo <span style="font-size:11px;background:#FDF4E3;color:#9B6E1A;padding:1px 5px;border-radius:4px">+10%</span></span>
-      </label>
-      <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:#3B2A1A;cursor:pointer;user-select:none">
-        <input type="checkbox" id="am-em" onchange="updateModalPrice()" style="width:16px;height:16px;accent-color:#2A7A4B;cursor:pointer">
-        <span>EndMatch <span style="font-size:11px;background:#EDF7F0;color:#2A7A4B;padding:1px 5px;border-radius:4px">+4%</span></span>
-      </label>
-    </div>
-    <div id="am-price-preview" style="font-size:15px;font-weight:700;margin-bottom:14px;min-height:22px"></div>
-    <label class="am-label" id="am-qty-label">Cantidad (m&sup2;)</label>
-    <input class="am-input" type="number" id="am-qty" placeholder="Ej: 25.5" min="0.1" step="0.1">
-    <div style="margin-top:8px;margin-bottom:4px">
-      <label class="am-label" style="margin-bottom:4px">Observaciones del &iacute;tem <span style="font-size:11px;color:#aaa;font-weight:400">(opcional)</span></label>
-      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px" id="obs-tags-container"></div>
-      <select id="obs-preset" onchange="addObsTag()" style="width:100%;padding:6px 10px;border:var(--border);border-radius:var(--radius);font-size:12px;background:#fff;color:var(--ink);outline:none;margin-bottom:6px">
-        <option value="">+ Agregar observaci&oacute;n r&aacute;pida&hellip;</option>
-        <option value="Incluye 10% de desperdicio">Incluye 10% de desperdicio</option>
-        <option value="Incluye 15% de desperdicio">Incluye 15% de desperdicio</option>
-        <option value="Incluye 20% de desperdicio">Incluye 20% de desperdicio</option>
-        <option value="Precio sujeto a variaci&oacute;n cambiaria">Precio sujeto a variaci&oacute;n cambiaria</option>
-        <option value="Material para exterior">Material para exterior</option>
-        <option value="Material para interior">Material para interior</option>
-        <option value="Requiere tratamiento Cutek">Requiere tratamiento Cutek</option>
-        <option value="Incluye Cutek CD50 2 manos">Incluye Cutek CD50 2 manos</option>
-        <option value="Stock sujeto a disponibilidad">Stock sujeto a disponibilidad</option>
-        <option value="Entrega en Showroom Tronador">Entrega en Showroom Tronador</option>
-        <option value="Flete a coordinar por separado">Flete a coordinar por separado</option>
-        <option value="Precio cotizado en USD billete">Precio cotizado en USD billete</option>
-        <option value="End Match incluido">End Match incluido</option>
-        <option value="Largo fijo &mdash; sin acumulaci&oacute;n de cortes">Largo fijo &mdash; sin acumulaci&oacute;n de cortes</option>
-      </select>
-      <textarea id="am-obs" rows="2" placeholder="Observaci&oacute;n personalizada&hellip;" style="border:var(--border);border-radius:var(--radius);padding:8px 10px;font-size:12px;font-family:inherit;color:var(--ink);background:var(--cream);resize:vertical;width:100%;outline:none;margin-bottom:10px;transition:border-color .15s" onfocus="this.style.borderColor='var(--ink)'" onblur="this.style.borderColor='var(--light)'"></textarea>
-    </div>
-    <div class="am-actions">
-      <button class="am-btn am-cancel" onclick="closeAddModal()">Cancelar</button>
-      <button class="am-btn am-confirm" onclick="confirmAdd()">Agregar</button>
+<div class="header">
+  <div class="logo">
+    <div class="logo-mark">KK</div>
+    <div>
+      <div class="logo-text">Kokkai</div>
+      <div class="logo-sub">Wood Products</div>
     </div>
   </div>
+  <div class="header-right">⭐ Lista de Favoritos</div>
 </div>
 
-<div id="quote-panel">
-  <div class="qp-hdr">
-    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgNTAiPgogIDxyZWN0IHdpZHRoPSIxODAiIGhlaWdodD0iNTAiIGZpbGw9IiMxMTEiLz4KICA8dGV4dCB4PSIxNCIgeT0iMzQiIGZvbnQtZmFtaWx5PSJIZWx2ZXRpY2EgTmV1ZSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjIyIiBmb250LXdlaWdodD0iNzAwIiBmaWxsPSIjQkZBODdBIiBsZXR0ZXItc3BhY2luZz0iMyI+S09LS0FJPC90ZXh0Pgo8L3N2Zz4=" alt="Kokkai">
-    <span class="qp-title">Cotizaci&oacute;n</span>
-    <button class="qp-back" onclick="closeQuote()">&#8592; Seguir agregando</button>
-    <button class="qp-close" onclick="closeQuote()">&times;</button>
+<div class="controls">
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="Buscar por madera, perfil, medidas..." oninput="render()">
   </div>
-  <div class="qp-body">
-    <div class="qp-section">
-      <div class="qp-section-title">Datos del cliente</div>
-      <div class="qc-field"><label>Se&ntilde;or/es</label><input id="qc-client" type="text" placeholder="Nombre / Raz&oacute;n social"></div>
-      <div style="display:flex;gap:10px">
-        <div class="qc-field" style="flex:1"><label>CUIT</label><input id="qc-cuit" type="text" placeholder="20-12345678-9" oninput="onCuitInput(this.value)"><button onclick="lookupCuit(false)" title="Consultar ARCA" style="background:none;border:var(--border);border-radius:4px;padding:3px 7px;cursor:pointer;font-size:11px;color:var(--mid);white-space:nowrap;margin-left:4px" id="arca-btn">&#128269; ARCA</button></div>
-        <div class="qc-field" style="flex:1"><label>IVA</label><select id="qc-iva" style="border:1.5px solid #D4C8B8;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1A1410;background:#F5F2EE;width:100%;outline:none"><option>Consumidor Final</option><option>Responsable Inscripto</option><option>Monotributista</option><option>Exento</option></select></div>
-      </div>
-      <div id="arca-status" style="padding:4px 14px 2px;display:none;font-size:11px;color:var(--mid);margin-bottom:2px"></div>
-      <div style="display:flex;gap:10px">
-        <div class="qc-field" style="flex:1"><label>Tel&eacute;fono</label><input id="qc-contact" type="text" placeholder="+54 9 11..."></div>
-        <div class="qc-field" style="flex:1"><label>Email</label><input id="qc-email" type="text" placeholder="cliente@..."></div>
-      </div>
-      <div class="qc-field"><label>Domicilio</label><input id="qc-domicilio" type="text" placeholder="Direcci&oacute;n completa"></div>
-      <div style="display:flex;gap:10px">
-        <div class="qc-field" style="flex:1"><label>Localidad</label><input id="qc-localidad" type="text"></div>
-        <div class="qc-field" style="flex:1"><label>Provincia</label><input id="qc-provincia" type="text"></div>
-      </div>
-      <div style="display:flex;gap:10px">
-        <div class="qc-field" style="flex:1"><label>Fecha</label><input id="qc-date" type="text" placeholder="DD/MM/AAAA"></div>
-        <div class="qc-field" style="flex:1"><label>N&deg; cotizaci&oacute;n</label><input id="qc-num" type="text"></div>
-      </div>
-    </div>
-    <div class="qp-section">
-      <div class="qp-section-title">Condiciones</div>
-      <div class="qc-field" style="flex-direction:column;align-items:flex-start">
-        <label style="margin-bottom:6px">Condici&oacute;n de pago</label>
-        <div class="payment-tags" id="pay-tags-container"></div>
-        <select class="pay-dropdown" id="qc-payment-sel" onchange="addPaymentTag()">
-          <option value="">+ Agregar condici&oacute;n&hellip;</option>
-          <option value="100% Adelantado">100% Adelantado</option>
-          <option value="50% Adelantado">50% Adelantado</option>
-          <option value="40% Adelantado">40% Adelantado</option>
-          <option value="30% Adelantado">30% Adelantado</option>
-          <option value="50% Previo Entrega">50% Previo Entrega</option>
-          <option value="50% Contra Entrega">50% Contra Entrega</option>
-          <option value="60% Previo Entrega">60% Previo Entrega</option>
-          <option value="70% Previo Entrega">70% Previo Entrega</option>
-          <option value="70% Contra Entrega">70% Contra Entrega</option>
-          <option value="40% Contra Entrega">40% Contra Entrega</option>
-          <option value="30% Contra Entrega">30% Contra Entrega</option>
-          <option value="Cheque 30 d&iacute;as">Cheque 30 d&iacute;as</option>
-          <option value="Cheque 60 d&iacute;as">Cheque 60 d&iacute;as</option>
-          <option value="Transferencia Bancaria">Transferencia Bancaria</option>
-        </select>
-        <input type="hidden" id="qc-payment">
-      </div>
-      <div style="display:flex;gap:10px">
-        <div class="qc-field" style="flex:1"><label>Lugar entrega</label><input id="qc-delivery" type="text" placeholder="Ej: En obra"></div>
-        <div class="qc-field" style="flex:1"><label>Plazo entrega</label><input id="qc-deadline" type="text" placeholder="Ej: 60 d&iacute;as aprox."></div>
-      </div>
-      <div style="display:flex;gap:10px">
-        <div class="qc-field" style="flex:1"><label>Transporte</label><input id="qc-transporte" type="text"></div>
-        <div class="qc-field" style="flex:1"><label>Fecha vencimiento</label><input id="qc-vencimiento" type="text" placeholder="DD/MM/AAAA"></div>
-      </div>
-      <div class="qc-field"><label>Observaciones</label><textarea id="qc-obs" rows="2" style="border:1.5px solid #D4C8B8;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:#1A1410;background:#F5F2EE;resize:vertical;width:100%;outline:none;transition:border-color .15s" onfocus="this.style.borderColor='#7A5C3E'" onblur="this.style.borderColor='#D4C8B8'"></textarea></div>
-    </div>
-    <div class="qp-section">
-      <div class="qp-section-title">Productos</div>
-      <div id="qp-items"></div>
-      <div style="padding:12px 16px;border-top:var(--border)"><div id="qp-total"></div></div>
-    </div>
-    <button class="qp-pdf-btn" onclick="generatePDF()">Generar PDF</button>
-    <div style="font-size:10px;color:#aaa;margin-top:10px;text-align:center;line-height:1.6">Precios expresados en d&oacute;lares &nbsp;&middot;&nbsp; El ancho bruto puede diferir del ancho nominal</div>
-  </div>
+  <button class="filter-btn all active" onclick="setFilter('all',this)">Todos</button>
+  <button class="filter-btn" onclick="setFilter('Decking',this)">🪵 Decking</button>
+  <button class="filter-btn" onclick="setFilter('Cladding Hardwood',this)">🌿 Cladding HW</button>
+  <button class="filter-btn" onclick="setFilter('Cladding Softwood',this)">🌲 Cladding SW</button>
+  <button class="filter-btn" onclick="setFilter('Accesorios',this)">🔧 Accesorios</button>
+</div>
+
+<div class="list-toggle">
+  <button class="list-btn active-a" id="btn-a" onclick="toggleList('a')">Lista A — B2C USD</button>
+  <button class="list-btn active-b" id="btn-b" onclick="toggleList('b')">Lista B — B2B Nac. USD</button>
+  <button class="list-btn active-c" id="btn-c" onclick="toggleList('c')">Lista C — B2B CIF EUR</button>
+</div>
+
+<div class="legend">
+  <span style="font-weight:600;color:#555;">Unidades:</span>
+  <span><span class="legend-dot" style="background:#2D7A2D;"></span>m² — precio por metro cuadrado</span>
+  <span><span class="legend-dot" style="background:var(--ml-color);"></span>m/l — precio por metro lineal</span>
+  <span><span class="legend-dot" style="background:#888;"></span>UN — precio por unidad</span>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:130px">Categoría</th>
+        <th>Producto</th>
+        <th>Medidas</th>
+        <th>Largos (mm)</th>
+        <th class="price col-a">Lista A</th>
+        <th class="price col-b">Lista B</th>
+        <th class="price col-c">Lista C</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
 </div>
 
 <script>
+const D = [{"cat": "Decking", "madera": "Thermo Ash", "perfil": "D31, D4sg2, D3", "linea": "Hardwood Decking", "medidas": "20X112", "largos": "800-1500", "a": 89.99, "b": 69.22, "c": 53.26, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Ash", "perfil": "D31, D4sg2, D4", "linea": "Hardwood Decking", "medidas": "20x132", "largos": "800-1500", "a": 95.3, "b": 73.31, "c": 56.4, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Ash", "perfil": "D31, D4sg2, D4", "linea": "Hardwood Decking", "medidas": "20x132", "largos": "1800-3000", "a": 137.01, "b": 105.4, "c": 81.09, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Ash", "perfil": "D4", "linea": "Hardwood Decking", "medidas": "42x90", "largos": "3300-3900+", "a": 392.39, "b": 301.84, "c": 232.24, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4, D4sg, D30sg, D4 sgU", "linea": "Softwood Decking", "medidas": "26x140", "largos": "3000-5700", "a": 68.59, "b": 52.76, "c": 39.4, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D45J", "linea": "Softwood Decking", "medidas": "26x118", "largos": "3000-4800", "a": 69.69, "b": 53.61, "c": 40.04, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x68", "largos": "3000-5700", "a": 103.41, "b": 79.54, "c": 59.4, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x90", "largos": "3000-5700", "a": 103.99, "b": 79.99, "c": 59.74, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x140", "largos": "3000-5700", "a": 104.29, "b": 80.22, "c": 59.91, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x42", "largos": "3000-5700", "a": 111.42, "b": 85.7, "c": 64.0, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Spruce", "perfil": "D4B sg", "linea": "Softwood Decking", "medidas": "26x160", "largos": "3000-5400", "a": 60.02, "b": 46.17, "c": 34.48, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Spruce", "perfil": "D4B sg", "linea": "Softwood Decking", "medidas": "26x140", "largos": "3000-5399", "a": 68.59, "b": 52.76, "c": 39.4, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Decking", "madera": "Thermo Spruce", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x68", "largos": "3000-5700", "a": 100.1, "b": 77.0, "c": 57.5, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C7, C7J, C34", "linea": "Hardwood Cladding - Select", "medidas": "20x72", "largos": "3300-3900+", "a": 11.1, "b": 8.54, "c": 91.24, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x115", "largos": "1800-3000", "a": 16.51, "b": 12.7, "c": 84.97, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x95", "largos": "1800-3000", "a": 129.08, "b": 99.3, "c": 76.4, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x95", "largos": "3300-3900+", "a": 133.71, "b": 102.86, "c": 79.14, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C9", "linea": "Hardwood Cladding - Select", "medidas": "20x112", "largos": "1800-3000", "a": 138.59, "b": 106.61, "c": 82.03, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C9", "linea": "Hardwood Cladding - Select", "medidas": "20x112", "largos": "1200-3900+", "a": 140.98, "b": 108.45, "c": 83.44, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x115", "largos": "3300-3900+", "a": 142.35, "b": 109.5, "c": 84.25, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C9", "linea": "Hardwood Cladding - Select", "medidas": "20x112", "largos": "3300-3900+", "a": 142.69, "b": 109.76, "c": 84.45, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C7, C7J, C34", "linea": "Hardwood Cladding - Select", "medidas": "20x72", "largos": "1800-3000", "a": 143.6, "b": 110.46, "c": 84.99, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C20, C34, C6", "linea": "Hardwood Cladding - Select", "medidas": "20x132", "largos": "1800-3000", "a": 144.92, "b": 111.48, "c": 85.77, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C20, C34, C6", "linea": "Hardwood Cladding - Select", "medidas": "20x132", "largos": "3300-3900+", "a": 150.33, "b": 115.64, "c": 88.97, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C72", "linea": "Hardwood Cladding - Select", "medidas": "26x91", "largos": "3300-3900+", "a": 162.01, "b": 124.62, "c": 95.89, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Clear Pine", "perfil": "C7J — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x65", "largos": "3000-5400", "a": 8.1328, "b": 6.256, "c": 4.0625, "b_m2": 96.25, "c_m2": 71.88, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C7J", "linea": "Softwood Cladding", "medidas": "20x65", "largos": "3000-4800", "a": 3.8036, "b": 2.9259, "c": 1.9, "b_m2": 45.01, "c_m2": 33.62, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C7J — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x65", "largos": "3000-5400", "a": 5.6304, "b": 4.3311, "c": 2.8125, "b_m2": 66.63, "c_m2": 49.76, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C7J — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "26x65", "largos": "3000-5400", "a": 6.6314, "b": 5.101, "c": 3.3125, "b_m2": 78.48, "c_m2": 58.61, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "D4", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "a": 7.307, "b": 5.6208, "c": 3.65, "b_m2": 82.66, "c_m2": 61.73, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x140", "largos": "3000-5700", "a": 7.6073, "b": 5.8518, "c": 3.8, "b_m2": 41.8, "c_m2": 31.21, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "D4", "linea": "Softwood Cladding", "medidas": "42x90", "largos": "3000-5700", "a": 9.7343, "b": 7.488, "c": 4.8625, "b_m2": 83.2, "c_m2": 62.13, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x115", "largos": "3000-5700", "a": 52.44, "b": 40.34, "c": 30.12, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x90", "largos": "3000-5700", "a": 53.38, "b": 41.07, "c": 30.67, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x68", "largos": "3000-5700", "a": 55.94, "b": 43.03, "c": 32.13, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "26x68", "largos": "3000-5700", "a": 66.98, "b": 51.52, "c": 38.47, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "26x115", "largos": "3000-5700", "a": 67.02, "b": 51.55, "c": 38.5, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "26x90", "largos": "3000-5700", "a": 67.56, "b": 51.97, "c": 38.81, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "20x140", "largos": "3000-5400", "a": 67.92, "b": 52.25, "c": 39.02, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x115", "largos": "3000-5400", "a": 71.81, "b": 55.24, "c": 41.25, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x90", "largos": "3000-5400", "a": 77.85, "b": 59.89, "c": 44.72, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "26x115", "largos": "3000-5400", "a": 78.34, "b": 60.26, "c": 45.0, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "42x90", "largos": "3000-5400", "a": 119.56, "b": 91.97, "c": 68.68, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "42x68", "largos": "3000-5400", "a": 125.12, "b": 96.25, "c": 71.88, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "C7J", "linea": "Softwood Cladding", "medidas": "20x65", "largos": "2400-4800", "a": 5.6054, "b": 4.3118, "c": 2.8, "b_m2": 66.34, "c_m2": 49.54, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "CAR3G", "linea": "Softwood Cladding", "medidas": "20x138", "largos": "3000-5700", "a": 84.86, "b": 65.28, "c": 48.75, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x115", "largos": "3000-5700", "a": 82.37, "b": 63.36, "c": 48.75, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x138", "largos": "3000-5700", "a": 82.37, "b": 63.36, "c": 48.75, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 - Kodiak", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "a": 6.7565, "b": 5.1973, "c": 3.375, "b_m2": 76.43, "c_m2": 57.08, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4J - Benchmark", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "a": 6.7565, "b": 5.1973, "c": 3.375, "b_m2": 76.43, "c_m2": 57.08, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4J - Kodiak", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "a": 6.7565, "b": 5.1973, "c": 3.375, "b_m2": 76.43, "c_m2": 57.08, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C7J — Ignite 5 & 7", "linea": "Ignite", "medidas": "20x65", "largos": "3000-5400", "a": 7.5072, "b": 5.7748, "c": 3.75, "b_m2": 88.84, "c_m2": 66.35, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C7 — Vivid Black Opaque - 4 Sides", "linea": "Vivid Opaque", "medidas": "20x67", "largos": "3000-5400", "a": 7.5072, "b": 5.7748, "c": 3.75, "b_m2": 86.19, "c_m2": 55.97, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "CP3", "linea": "Softwood Cladding", "medidas": "42x42", "largos": "4800", "a": 7.7574, "b": 5.9673, "c": 3.875, "b_m2": 142.08, "c_m2": 106.1, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 - Vivid Opaque - 4 Sides", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "a": 12.487, "b": 9.6054, "c": 6.2375, "b_m2": 141.26, "c_m2": 91.73, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4J - Vivid Opaque - 4 Sides", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "a": 12.487, "b": 9.6054, "c": 6.2375, "b_m2": 141.26, "c_m2": 91.73, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 — Vivid Silvered - 4 Sides", "linea": "Vivid Silvered", "medidas": "42x68", "largos": "3000-5400", "a": 12.487, "b": 9.6054, "c": 6.2375, "b_m2": 141.26, "c_m2": 91.73, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 — Vivid Silvered - 4 Sides", "linea": "Vivid Silvered", "medidas": "42x68", "largos": "3000-5400", "a": 12.9865, "b": 9.9896, "c": 6.487, "b_m2": 146.91, "c_m2": 95.4, "u": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C26", "linea": "Softwood Cladding", "medidas": "19x141", "largos": "3000-5700", "a": 55.02, "b": 42.32, "c": 31.6, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24", "linea": "Softwood Cladding", "medidas": "20x140", "largos": "3000-5700", "a": 55.41, "b": 42.62, "c": 31.83, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15", "linea": "Softwood Cladding", "medidas": "20x186", "largos": "3000-5700", "a": 55.83, "b": 42.95, "c": 32.07, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24 — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "20x140", "largos": "3000-5400", "a": 64.35, "b": 49.5, "c": 36.96, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15 — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "20x186", "largos": "3000-5400", "a": 64.58, "b": 49.68, "c": 37.1, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15 — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x186", "largos": "3000-5400", "a": 70.63, "b": 54.33, "c": 40.57, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "CAR10 — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "26x140", "largos": "3000-5400", "a": 72.39, "b": 55.69, "c": 41.58, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C26 — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "19x141", "largos": "3000-5400", "a": 72.76, "b": 55.97, "c": 5.89, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24 — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x140", "largos": "3000-5400", "a": 73.28, "b": 56.37, "c": 42.1, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4B — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "20x68", "largos": "3000-5400", "a": 77.28, "b": 59.45, "c": 3.02, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C54G — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "26x92", "largos": "3000-5400", "a": 78.88, "b": 60.68, "c": 4.17, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15 — Ignite 5 & 7", "linea": "Ignite", "medidas": "20x186", "largos": "3000-5400", "a": 84.76, "b": 65.2, "c": 48.69, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C26 — Ignite 5 & 7", "linea": "Ignite", "medidas": "19x141", "largos": "3000-5400", "a": 85.19, "b": 65.53, "c": 6.9, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24 — Ignite 5 & 7", "linea": "Ignite", "medidas": "20x140", "largos": "3000-5400", "a": 85.8, "b": 66.0, "c": 49.29, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce / Pine", "perfil": "C34 Mix&Match — Stripes", "linea": "Stripes", "medidas": "19x140", "largos": "3000-5400", "a": 80.43, "b": 61.87, "c": 46.21, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce / Pine", "perfil": "C34 Mix&Match — Stripes", "linea": "Stripes", "medidas": "19x115", "largos": "3000-5400", "a": 87.04, "b": 66.95, "c": 50.0, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce / Pine", "perfil": "C34 Mix&Match — Stripes", "linea": "Stripes", "medidas": "19x90", "largos": "3000-5400", "a": 90.36, "b": 69.51, "c": 51.91, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce / Pine", "perfil": "CAR10J — Stripes", "linea": "Stripes", "medidas": "25x140", "largos": "3000-5400", "a": 92.95, "b": 71.5, "c": 53.39, "b_m2": null, "c_m2": null, "u": "m²"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "B1-1", "linea": "Accesorios", "medidas": "B1-1 clip (para perfiles C6, C9)", "largos": "—", "a": 0.5925, "b": 0.529, "c": 0.3306, "b_m2": null, "c_m2": null, "u": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "PC Clip", "linea": "Accesorios", "medidas": "PC clip + tornillos + 1 broca", "largos": "—", "a": 0.4405, "b": 0.3933, "c": 0.2587, "b_m2": null, "c_m2": null, "u": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "T-4", "linea": "Accesorios", "medidas": "T-4 clip metal negro + tornillos (D4sg2 ≤112mm)", "largos": "—", "a": 0.5152, "b": 0.46, "c": 0.2875, "b_m2": null, "c_m2": null, "u": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "JUAN1", "linea": "Accesorios", "medidas": "JuAn® 1.0 con tope (prevención mov. longitudinal)", "largos": "—", "a": 0.5131, "b": 0.4582, "c": 0.3019, "b_m2": null, "c_m2": null, "u": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "TUME", "linea": "Accesorios", "medidas": "Thermory® Oil DARK pigmentado 2,5L", "largos": "—", "a": 84.2352, "b": 75.21, "c": 47.0063, "b_m2": null, "c_m2": null, "u": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "NAT", "linea": "Accesorios", "medidas": "Thermory® Oil NATURAL 2,5L", "largos": "—", "a": 90.9328, "b": 81.19, "c": 50.7437, "b_m2": null, "c_m2": null, "u": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "DECK Clean 1L", "linea": "Accesorios", "medidas": "Thermory® Deck Cleaning Agent 1L", "largos": "—", "a": 35.0336, "b": 31.28, "c": 19.55, "b_m2": null, "c_m2": null, "u": "UN"}];
 
-const D=[{"id":0,"categoria":"Decking","madera":"Thermo Pine","perfil":"D4","marca":"Thermory","linea":"Posts & Beams","tipo":"Beam/Post","largo_fijo":"NO","end_match":"SI","medidas":"42x140","largos":"3000-5700","ancho_com":0.14,"eur_lm":5.8344,"eur_m2":41.6743,"lista_a_m2":107.0062,"lista_a_lm":14.9809,"lista_b_m2":89.9212,"lista_b_lm":12.589,"lista_c_m2":61.4696,"lista_c_ml":8.6057},{"id":1,"categoria":"Decking","madera":"Thermo Pine","perfil":"D4","marca":"Thermory","linea":"Posts & Beams","tipo":"Beam/Post","largo_fijo":"NO","end_match":"NO","medidas":"42x42","largos":"3000-5700","ancho_com":0.042,"eur_lm":1.87,"eur_m2":44.5238,"lista_a_m2":114.3229,"lista_a_lm":4.8016,"lista_b_m2":96.0697,"lista_b_lm":4.0349,"lista_c_m2":65.6726,"lista_c_ml":2.7582},{"id":2,"categoria":"Decking","madera":"Thermo Pine","perfil":"D4","marca":"Thermory","linea":"Posts & Beams","tipo":"Beam/Post","largo_fijo":"NO","end_match":"NO","medidas":"42x68","largos":"3000-5700","ancho_com":0.068,"eur_lm":2.81,"eur_m2":41.3235,"lista_a_m2":106.1056,"lista_a_lm":7.2152,"lista_b_m2":89.1644,"lista_b_lm":6.0632,"lista_c_m2":60.9522,"lista_c_ml":4.1448},{"id":3,"categoria":"Decking","madera":"Thermo Pine","perfil":"D4","marca":"Thermory","linea":"Posts & Beams","tipo":"Beam/Post","largo_fijo":"NO","end_match":"NO","medidas":"42x90","largos":"3000-5700","ancho_com":0.09,"eur_lm":3.74,"eur_m2":41.5556,"lista_a_m2":106.7014,"lista_a_lm":9.6031,"lista_b_m2":89.665,"lista_b_lm":8.0699,"lista_c_m2":61.2944,"lista_c_ml":5.5165},{"id":4,"categoria":"Decking","madera":"Thermo Spruce","perfil":null,"marca":"Thermory","linea":"Posts & Beams","tipo":"Beam/Post","largo_fijo":"NO","end_match":"NO","medidas":"42x68","largos":"3000-5700","ancho_com":0.068,"eur_lm":2.72,"eur_m2":40.0,"lista_a_m2":102.7072,"lista_a_lm":6.9841,"lista_b_m2":86.3086,"lista_b_lm":5.869,"lista_c_m2":59.0,"lista_c_ml":4.012},{"id":5,"categoria":"Decking","madera":"Thermo Ash","perfil":"D31, D4sg2, D3","marca":"Thermory","linea":"Hardwood Decking","tipo":"Decking","largo_fijo":"NO","end_match":"SI","medidas":"20X112","largos":"800-1500","ancho_com":0.112,"eur_lm":4.1496,"eur_m2":37.05,"lista_a_m2":95.1325,"lista_a_lm":10.6548,"lista_b_m2":79.9433,"lista_b_lm":8.9537,"lista_c_m2":54.6487,"lista_c_ml":6.1207},{"id":6,"categoria":"Decking","madera":"Thermo Ash","perfil":"D31, D4sg2, D4","marca":"Thermory","linea":"Hardwood Decking","tipo":"Decking","largo_fijo":"NO","end_match":"SI","medidas":"20x132","largos":"800-1500","ancho_com":0.132,"eur_lm":5.1792,"eur_m2":39.2364,"lista_a_m2":100.7464,"lista_a_lm":13.2985,"lista_b_m2":84.6609,"lista_b_lm":11.1752,"lista_c_m2":57.8736,"lista_c_ml":7.6393},{"id":7,"categoria":"Decking","madera":"Thermo Ash","perfil":"D31, D4sg2, D4","marca":"Thermory","linea":"Hardwood Decking","tipo":"Decking","largo_fijo":"NO","end_match":"SI","medidas":"20x132","largos":"1800-3000","ancho_com":0.132,"eur_lm":7.4464,"eur_m2":56.4121,"lista_a_m2":144.8483,"lista_a_lm":19.12,"lista_b_m2":121.7212,"lista_b_lm":16.0672,"lista_c_m2":83.2079,"lista_c_ml":10.9834},{"id":8,"categoria":"Decking","madera":"Thermo Pine","perfil":"D4, D4sg, D30sg, D4 sgU","marca":"Thermory","linea":"Softwood Decking","tipo":"Decking","largo_fijo":"NO","end_match":"SI","medidas":"26x140","largos":"3000-5700","ancho_com":0.14,"eur_lm":3.8376,"eur_m2":27.4114,"lista_a_m2":70.3838,"lista_a_lm":9.8537,"lista_b_m2":59.146,"lista_b_lm":8.2804,"lista_c_m2":40.4319,"lista_c_ml":5.6605},{"id":9,"categoria":"Decking","madera":"Thermo Pine","perfil":"D45J","marca":"Thermory","linea":"Softwood Decking","tipo":"Decking","largo_fijo":"NO","end_match":"SI","medidas":"26x118","largos":"3000-4800","ancho_com":0.118,"eur_lm":3.2864,"eur_m2":27.8508,"lista_a_m2":71.5121,"lista_a_lm":8.4384,"lista_b_m2":60.0942,"lista_b_lm":7.0911,"lista_c_m2":41.08,"lista_c_ml":4.8474},{"id":10,"categoria":"Decking","madera":"Thermo Spruce","perfil":"D4B sg","marca":"Thermory","linea":"Softwood Decking","tipo":"Decking","largo_fijo":"NO","end_match":"SI","medidas":"26x140","largos":"3000-5399","ancho_com":0.14,"eur_lm":3.8376,"eur_m2":27.4114,"lista_a_m2":70.3838,"lista_a_lm":9.8537,"lista_b_m2":59.146,"lista_b_lm":8.2804,"lista_c_m2":40.4319,"lista_c_ml":5.6605},{"id":11,"categoria":"Decking","madera":"Thermo Spruce","perfil":"D4B sg","marca":"Thermory","linea":"Softwood Decking","tipo":"Decking","largo_fijo":"NO","end_match":"SI","medidas":"26x160","largos":"3000-5400","ancho_com":0.16,"eur_lm":3.69,"eur_m2":23.0625,"lista_a_m2":59.2171,"lista_a_lm":9.4747,"lista_b_m2":49.7623,"lista_b_lm":7.962,"lista_c_m2":34.0172,"lista_c_ml":5.4428},{"id":12,"categoria":"Decking","madera":"Thermo Ash","perfil":"D4","marca":"Thermory","linea":"Hardwood Decking","tipo":"Decking","largo_fijo":"NO","end_match":"NO","medidas":"42x90","largos":"3300-3900+","ancho_com":0.09,"eur_lm":14.54,"eur_m2":161.5556,"lista_a_m2":414.823,"lista_a_lm":37.3341,"lista_b_m2":348.5907,"lista_b_lm":31.3732,"lista_c_m2":238.2944,"lista_c_ml":21.4465},{"id":13,"categoria":"Cladding Hardwood","madera":"Thermo Ash","perfil":"C34","marca":"Thermory","linea":"Hardwood Cladding - Select","tipo":"Cladding","largo_fijo":"SI","end_match":"NO","medidas":"20x95","largos":"1800-3000","ancho_com":0.095,"eur_lm":5.049,"eur_m2":53.1474,"lista_a_m2":132.4517,"lista_a_lm":12.5829,"lista_b_m2":114.6768,"lista_b_lm":10.8943,"lista_c_m2":78.3924,"lista_c_ml":7.4473},{"id":14,"categoria":"Cladding Hardwood","madera":"Thermo Ash","perfil":"C9","marca":"Thermory","linea":"Hardwood Cladding - Select","tipo":"Cladding","largo_fijo":"SI","end_match":"NO","medidas":"20x112","largos":"1800-3000","ancho_com":0.112,"eur_lm":6.391,"eur_m2":57.0625,"lista_a_m2":142.2089,"lista_a_lm":15.9274,"lista_b_m2":123.1246,"lista_b_lm":13.79,"lista_c_m2":84.1672,"lista_c_ml":9.4267},{"id":15,"categoria":"Cladding Hardwood","madera":"Thermo Ash","perfil":"C9","marca":"Thermory","linea":"Hardwood Cladding - Select","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"20x112","largos":"3300-3900+","ancho_com":0.112,"eur_lm":6.58,"eur_m2":58.75,"lista_a_m2":146.4144,"lista_a_lm":16.3984,"lista_b_m2":126.7657,"lista_b_lm":14.1978,"lista_c_m2":86.6562,"lista_c_ml":9.7055},{"id":16,"categoria":"Cladding Hardwood","madera":"Thermo Ash","perfil":"C34","marca":"Thermory","linea":"Hardwood Cladding - Select","tipo":"Cladding","largo_fijo":"SI","end_match":"NO","medidas":"20x115","largos":"1800-3000","ancho_com":0.115,"eur_lm":6.798,"eur_m2":59.113,"lista_a_m2":147.3192,"lista_a_lm":16.9417,"lista_b_m2":127.5491,"lista_b_lm":14.6681,"lista_c_m2":87.1917,"lista_c_ml":10.027},{"id":17,"categoria":"Cladding Hardwood","madera":"Thermo Ash","perfil":"C7, C7J, C34","marca":"Thermory","linea":"Hardwood Cladding - Select","tipo":"Cladding","largo_fijo":"SI","end_match":"NO","medidas":"20x72","largos":"1800-3000","ancho_com":0.072,"eur_lm":4.257,"eur_m2":59.125,"lista_a_m2":147.349,"lista_a_lm":10.6091,"lista_b_m2":127.5749,"lista_b_lm":9.1854,"lista_c_m2":87.2094,"lista_c_ml":6.2791},{"id":18,"categoria":"Cladding Hardwood","madera":"Thermo Ash","perfil":"C20, C34, C6","marca":"Thermory","linea":"Hardwood Cladding - Select","tipo":"Cladding","largo_fijo":"SI","end_match":"NO","medidas":"20x132","largos":"1800-3000","ancho_com":0.132,"eur_lm":7.876,"eur_m2":59.6667,"lista_a_m2":148.6989,"lista_a_lm":19.6283,"lista_b_m2":128.7436,"lista_b_lm":16.9942,"lista_c_m2":88.0083,"lista_c_ml":11.6171},{"id":19,"categoria":"Cladding Hardwood","madera":"Thermo Ash","perfil":"C7, C7J, C34","marca":"Thermory","linea":"Hardwood Cladding - Select","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"20x72","largos":"3300-3900+","ancho_com":0.072,"eur_lm":4.57,"eur_m2":63.4722,"lista_a_m2":158.1829,"lista_a_lm":11.3892,"lista_b_m2":136.9549,"lista_b_lm":9.8608,"lista_c_m2":93.6215,"lista_c_ml":6.7408},{"id":20,"categoria":"Cladding Softwood","madera":"Clear Pine","perfil":"C7J — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"20x65","largos":"3000-5400","ancho_com":0.065,"eur_lm":3.25,"eur_m2":50.0,"lista_a_m2":128.384,"lista_a_lm":8.345,"lista_b_m2":107.8857,"lista_b_lm":7.0126,"lista_c_m2":73.75,"lista_c_ml":4.7938},{"id":21,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C4 — Vivid Silvered - 4 Sides","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"42x68","largos":"3000-5400","ancho_com":0.068,"eur_lm":4.99,"eur_m2":73.3824,"lista_a_m2":188.4224,"lista_a_lm":12.8127,"lista_b_m2":158.3382,"lista_b_lm":-13.7059,"lista_c_m2":91.7279,"lista_c_ml":7.3602},{"id":22,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C4 - Vivid Opaque - 4 Sides","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"SI","end_match":"NO","medidas":"42x68","largos":"3000-5700","ancho_com":0.068,"eur_lm":4.99,"eur_m2":73.3824,"lista_a_m2":188.4224,"lista_a_lm":12.8127,"lista_b_m2":158.3382,"lista_b_lm":-13.7059,"lista_c_m2":91.7279,"lista_c_ml":7.3602},{"id":23,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C4 — Vivid Silvered - 4 Sides","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"42x68","largos":"3000-5400","ancho_com":0.068,"eur_lm":5.1896,"eur_m2":76.3176,"lista_a_m2":195.9593,"lista_a_lm":13.3252,"lista_b_m2":164.6717,"lista_b_lm":-13.7059,"lista_c_m2":95.3971,"lista_c_ml":7.6547},{"id":24,"categoria":"Cladding Softwood","madera":"Clear Pine","perfil":"C34 Mix&Match — Vivid Translucent 3","marca":"Thermory","linea":"Vivid Translucent","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"42x90","largos":"3000-5700","ancho_com":0.09,"eur_lm":8.1,"eur_m2":90.0,"lista_a_m2":20.7982,"lista_a_lm":20.7982,"lista_b_m2":194.1943,"lista_b_lm":17.4775,"lista_c_m2":132.75,"lista_c_ml":11.9475},{"id":25,"categoria":"Cladding Softwood","madera":"Clear Pine","perfil":"CAR3 — Stripes","marca":"Thermory","linea":"Stripes","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"19x138","largos":"3000-5400","ancho_com":0.138,"eur_lm":6.65,"eur_m2":48.1884,"lista_a_m2":123.7324,"lista_a_lm":17.0751,"lista_b_m2":103.9768,"lista_b_lm":14.3488,"lista_c_m2":71.0779,"lista_c_ml":9.8087},{"id":26,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C7J","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x65","largos":"3000-4800","ancho_com":0.065,"eur_lm":1.52,"eur_m2":23.3846,"lista_a_m2":3.9029,"lista_a_lm":3.9029,"lista_b_m2":50.4573,"lista_b_lm":3.2797,"lista_c_m2":34.4923,"lista_c_ml":2.242},{"id":27,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x115","largos":"3000-5700","ancho_com":0.115,"eur_lm":2.41,"eur_m2":20.9565,"lista_a_m2":53.8096,"lista_a_lm":6.1881,"lista_b_m2":45.2182,"lista_b_lm":5.2001,"lista_c_m2":30.9109,"lista_c_ml":3.5547},{"id":28,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x90","largos":"3000-5700","ancho_com":0.09,"eur_lm":1.92,"eur_m2":21.3333,"lista_a_m2":54.7772,"lista_a_lm":4.9299,"lista_b_m2":46.0312,"lista_b_lm":4.1428,"lista_c_m2":31.4667,"lista_c_ml":2.832},{"id":29,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C7J — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x65","largos":"3000-5400","ancho_com":0.065,"eur_lm":2.25,"eur_m2":34.6154,"lista_a_m2":88.8812,"lista_a_lm":5.7773,"lista_b_m2":74.6901,"lista_b_lm":4.8549,"lista_c_m2":51.0577,"lista_c_ml":3.3188},{"id":30,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x68","largos":"3000-5700","ancho_com":0.068,"eur_lm":1.52,"eur_m2":22.3529,"lista_a_m2":57.3952,"lista_a_lm":3.9029,"lista_b_m2":48.2313,"lista_b_lm":3.2797,"lista_c_m2":32.9706,"lista_c_ml":2.242},{"id":31,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"D4","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"42x68","largos":"3000-5700","ancho_com":0.068,"eur_lm":2.92,"eur_m2":42.9412,"lista_a_m2":110.2592,"lista_a_lm":7.4976,"lista_b_m2":92.6548,"lista_b_lm":6.3005,"lista_c_m2":63.3382,"lista_c_ml":4.307},{"id":32,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x140","largos":"3000-5700","ancho_com":0.14,"eur_lm":3.04,"eur_m2":21.7143,"lista_a_m2":55.7553,"lista_a_lm":7.8057,"lista_b_m2":46.8532,"lista_b_lm":6.5595,"lista_c_m2":32.0286,"lista_c_ml":4.484},{"id":33,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"26x115","largos":"3000-5700","ancho_com":0.115,"eur_lm":3.08,"eur_m2":26.7826,"lista_a_m2":68.7692,"lista_a_lm":7.9085,"lista_b_m2":57.7892,"lista_b_lm":6.6458,"lista_c_m2":39.5043,"lista_c_ml":4.543},{"id":34,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x115","largos":"3000-5400","ancho_com":0.115,"eur_lm":3.3,"eur_m2":28.6957,"lista_a_m2":73.6813,"lista_a_lm":8.4733,"lista_b_m2":61.917,"lista_b_lm":7.1205,"lista_c_m2":42.3261,"lista_c_ml":4.8675},{"id":35,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"D4","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"42x90","largos":"3000-5700","ancho_com":0.09,"eur_lm":3.89,"eur_m2":43.2222,"lista_a_m2":110.9808,"lista_a_lm":9.9883,"lista_b_m2":93.2612,"lista_b_lm":8.3935,"lista_c_m2":63.7528,"lista_c_ml":5.7378},{"id":36,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Translucent 7","marca":"Thermory","linea":"Vivid Translucent","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":4.1,"eur_m2":29.2857,"lista_a_m2":75.1963,"lista_a_lm":10.5275,"lista_b_m2":63.1902,"lista_b_lm":8.8466,"lista_c_m2":43.1964,"lista_c_ml":6.0475},{"id":37,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x90","largos":"3000-5400","ancho_com":0.09,"eur_lm":2.8,"eur_m2":31.1111,"lista_a_m2":79.8834,"lista_a_lm":7.1895,"lista_b_m2":67.1289,"lista_b_lm":6.0416,"lista_c_m2":45.8889,"lista_c_ml":4.13},{"id":38,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Silvered Shield","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"26x115","largos":"3000-5400","ancho_com":0.115,"eur_lm":3.6,"eur_m2":31.3043,"lista_a_m2":80.3795,"lista_a_lm":9.2436,"lista_b_m2":67.5458,"lista_b_lm":7.7678,"lista_c_m2":46.1739,"lista_c_ml":5.31},{"id":39,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"26x115","largos":"3000-5400","ancho_com":0.115,"eur_lm":4.0,"eur_m2":34.7826,"lista_a_m2":89.3106,"lista_a_lm":10.2707,"lista_b_m2":75.0509,"lista_b_lm":8.6309,"lista_c_m2":51.3043,"lista_c_ml":5.9},{"id":40,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"26x90","largos":"3000-5400","ancho_com":0.09,"eur_lm":3.25,"eur_m2":36.1111,"lista_a_m2":92.7218,"lista_a_lm":8.345,"lista_b_m2":77.9175,"lista_b_lm":7.0126,"lista_c_m2":53.2639,"lista_c_ml":4.7938},{"id":41,"categoria":"Cladding Softwood","madera":"Thermo Radiata Pine (Clear)","perfil":"C7J","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"20x65","largos":"2400-4800","ancho_com":0.065,"eur_lm":2.24,"eur_m2":34.4615,"lista_a_m2":5.7516,"lista_a_lm":5.7516,"lista_b_m2":74.3582,"lista_b_lm":4.8333,"lista_c_m2":50.8308,"lista_c_ml":3.304},{"id":42,"categoria":"Cladding Softwood","madera":"Thermo Radiata Pine (Clear)","perfil":"C34 Mix&Match","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"20x115","largos":"3000-5700","ancho_com":0.115,"eur_lm":3.9,"eur_m2":33.913,"lista_a_m2":84.5167,"lista_a_lm":9.7194,"lista_b_m2":73.1747,"lista_b_lm":8.4151,"lista_c_m2":50.0217,"lista_c_ml":5.7525},{"id":43,"categoria":"Cladding Softwood","madera":"Thermo Radiata Pine (Clear)","perfil":"C34 Mix&Match","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"20x138","largos":"3000-5700","ancho_com":0.138,"eur_lm":4.68,"eur_m2":33.913,"lista_a_m2":84.5167,"lista_a_lm":11.6633,"lista_b_m2":73.1747,"lista_b_lm":10.0981,"lista_c_m2":50.0217,"lista_c_ml":6.903},{"id":44,"categoria":"Cladding Softwood","madera":"Thermo Radiata Pine (Clear)","perfil":"CAR3G","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"20x138","largos":"3000-5700","ancho_com":0.138,"eur_lm":4.68,"eur_m2":33.913,"lista_a_m2":84.5167,"lista_a_lm":11.6633,"lista_b_m2":73.1747,"lista_b_lm":10.0981,"lista_c_m2":50.0217,"lista_c_ml":6.903},{"id":45,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C26","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"19x141","largos":"3000-5700","ancho_com":0.141,"eur_lm":3.1,"eur_m2":21.9858,"lista_a_m2":56.4525,"lista_a_lm":7.9598,"lista_b_m2":47.4391,"lista_b_lm":6.6889,"lista_c_m2":32.4291,"lista_c_ml":4.5725},{"id":46,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C24","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x140","largos":"3000-5700","ancho_com":0.14,"eur_lm":3.1,"eur_m2":22.1429,"lista_a_m2":56.8558,"lista_a_lm":7.9598,"lista_b_m2":47.778,"lista_b_lm":6.6889,"lista_c_m2":32.6607,"lista_c_ml":4.5725},{"id":47,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C15","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x186","largos":"3000-5700","ancho_com":0.186,"eur_lm":4.15,"eur_m2":22.3118,"lista_a_m2":57.2896,"lista_a_lm":10.6559,"lista_b_m2":48.1425,"lista_b_lm":8.9545,"lista_c_m2":32.9099,"lista_c_ml":6.1212},{"id":48,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C24 — Vivid Silvered Shield","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":3.6,"eur_m2":25.7143,"lista_a_m2":66.0261,"lista_a_lm":9.2436,"lista_b_m2":55.4841,"lista_b_lm":7.7678,"lista_c_m2":37.9286,"lista_c_ml":5.31},{"id":49,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C15 — Vivid Silvered Shield","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x186","largos":"3000-5400","ancho_com":0.186,"eur_lm":4.8,"eur_m2":25.8065,"lista_a_m2":66.2627,"lista_a_lm":12.3249,"lista_b_m2":55.6829,"lista_b_lm":10.357,"lista_c_m2":38.0645,"lista_c_ml":7.08},{"id":50,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"CP3","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"42x42","largos":"4800","ancho_com":0.042,"eur_lm":3.1,"eur_m2":73.8095,"lista_a_m2":189.5192,"lista_a_lm":7.9598,"lista_b_m2":159.2599,"lista_b_lm":6.6889,"lista_c_m2":108.869,"lista_c_ml":4.5725},{"id":51,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C7 — Vivid Black Opaque - 4 Sides","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x67","largos":"3000-5400","ancho_com":0.067,"eur_lm":3.12,"eur_m2":46.5672,"lista_a_m2":119.5696,"lista_a_lm":8.0112,"lista_b_m2":100.4786,"lista_b_lm":-13.9254,"lista_c_m2":58.209,"lista_c_ml":4.602},{"id":52,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C15 — Vivid Silvered L/D/S","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x186","largos":"3000-5400","ancho_com":0.186,"eur_lm":5.15,"eur_m2":27.6882,"lista_a_m2":71.0944,"lista_a_lm":13.2236,"lista_b_m2":59.7432,"lista_b_lm":11.1122,"lista_c_m2":40.8401,"lista_c_ml":7.5963},{"id":53,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C15 — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x186","largos":"3000-5400","ancho_com":0.186,"eur_lm":5.25,"eur_m2":28.2258,"lista_a_m2":72.4748,"lista_a_lm":13.4803,"lista_b_m2":60.9032,"lista_b_lm":11.328,"lista_c_m2":41.6331,"lista_c_ml":7.7438},{"id":54,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C26 — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"19x185","largos":"3000-5400","ancho_com":0.185,"eur_lm":5.25,"eur_m2":28.3784,"lista_a_m2":72.8666,"lista_a_lm":13.4803,"lista_b_m2":61.2324,"lista_b_lm":11.328,"lista_c_m2":41.8581,"lista_c_ml":7.7438},{"id":55,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"CAR10 — Vivid Silvered Shield","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"26x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":4.05,"eur_m2":28.9286,"lista_a_m2":74.2793,"lista_a_lm":10.3991,"lista_b_m2":62.4196,"lista_b_lm":8.7387,"lista_c_m2":42.6696,"lista_c_ml":5.9737},{"id":56,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C24 — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":4.1,"eur_m2":29.2857,"lista_a_m2":75.1963,"lista_a_lm":10.5275,"lista_b_m2":63.1902,"lista_b_lm":8.8466,"lista_c_m2":43.1964,"lista_c_ml":6.0475},{"id":57,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C15 — Ignite 5 & 7","marca":"Thermory","linea":"Ignite","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x186","largos":"3000-5400","ancho_com":0.186,"eur_lm":6.3,"eur_m2":33.871,"lista_a_m2":86.9698,"lista_a_lm":16.1764,"lista_b_m2":73.0839,"lista_b_lm":13.5936,"lista_c_m2":49.9597,"lista_c_ml":9.2925},{"id":58,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C26 — Ignite 5 & 7","marca":"Thermory","linea":"Ignite","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"19x185","largos":"3000-5400","ancho_com":0.185,"eur_lm":6.3,"eur_m2":34.0541,"lista_a_m2":87.4399,"lista_a_lm":16.1764,"lista_b_m2":73.4789,"lista_b_lm":13.5936,"lista_c_m2":50.2297,"lista_c_ml":9.2925},{"id":59,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C24 — Ignite 5 & 7","marca":"Thermory","linea":"Ignite","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":4.8,"eur_m2":34.2857,"lista_a_m2":88.0347,"lista_a_lm":12.3249,"lista_b_m2":73.9788,"lista_b_lm":10.357,"lista_c_m2":50.5714,"lista_c_ml":7.08},{"id":60,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C4J - Vivid Opaque - 4 Sides","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"42x68","largos":"3000-5700","ancho_com":0.068,"eur_lm":4.99,"eur_m2":73.3824,"lista_a_m2":188.4224,"lista_a_lm":12.8127,"lista_b_m2":158.3382,"lista_b_lm":-13.7059,"lista_c_m2":91.7279,"lista_c_ml":7.3602},{"id":61,"categoria":"Cladding Softwood","madera":"Thermo Spruce / Pine","perfil":"C34 Mix&Match — Stripes","marca":"Thermory","linea":"Stripes","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"19x115","largos":"3000-5400","ancho_com":0.115,"eur_lm":4.0,"eur_m2":34.7826,"lista_a_m2":89.3106,"lista_a_lm":10.2707,"lista_b_m2":75.0509,"lista_b_lm":8.6309,"lista_c_m2":51.3043,"lista_c_ml":5.9},{"id":62,"categoria":"Cladding Softwood","madera":"Clear Pine","perfil":"C34 Mix&Match — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"20x138","largos":"3000-5400","ancho_com":0.138,"eur_lm":5.9,"eur_m2":42.7536,"lista_a_m2":109.7776,"lista_a_lm":15.1493,"lista_b_m2":92.2501,"lista_b_lm":12.7305,"lista_c_m2":63.0616,"lista_c_ml":8.7025},{"id":63,"categoria":"Cladding Softwood","madera":"Clear Pine","perfil":"CAR3J — Stripes","marca":"Thermory","linea":"Stripes","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"19x134","largos":"3000-5400","ancho_com":0.134,"eur_lm":6.65,"eur_m2":49.6269,"lista_a_m2":127.4259,"lista_a_lm":17.0751,"lista_b_m2":107.0806,"lista_b_lm":14.3488,"lista_c_m2":73.1996,"lista_c_ml":9.8087},{"id":64,"categoria":"Cladding Softwood","madera":"Thermo Ash","perfil":"S2-BBME Panel (even)","marca":"Thermory","linea":"Ash Shingles","tipo":"Cladding","largo_fijo":"NO","end_match":"NO","medidas":"24x340","largos":"1250.0","ancho_com":0.34,"eur_lm":71.65,"eur_m2":210.7353,"lista_a_m2":541.1008,"lista_a_lm":183.9743,"lista_b_m2":454.7066,"lista_b_lm":154.6002,"lista_c_m2":310.8346,"lista_c_ml":105.6838},{"id":65,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C7J — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"26x65","largos":"3000-5400","ancho_com":0.065,"eur_lm":2.65,"eur_m2":40.7692,"lista_a_m2":104.6823,"lista_a_lm":6.8044,"lista_b_m2":87.9684,"lista_b_lm":5.7179,"lista_c_m2":60.1346,"lista_c_ml":3.9087},{"id":66,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"26x68","largos":"3000-5700","ancho_com":0.068,"eur_lm":1.82,"eur_m2":26.7647,"lista_a_m2":68.7232,"lista_a_lm":4.6732,"lista_b_m2":57.7506,"lista_b_lm":3.927,"lista_c_m2":39.4779,"lista_c_ml":2.6845},{"id":67,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match","marca":"Thermory","linea":"Softwood Cladding","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"26x90","largos":"3000-5700","ancho_com":0.09,"eur_lm":2.43,"eur_m2":27.0,"lista_a_m2":69.3274,"lista_a_lm":6.2395,"lista_b_m2":58.2583,"lista_b_lm":5.2432,"lista_c_m2":39.825,"lista_c_ml":3.5842},{"id":68,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Silvered Shield","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":3.8,"eur_m2":27.1429,"lista_a_m2":69.6942,"lista_a_lm":9.7572,"lista_b_m2":58.5665,"lista_b_lm":8.1993,"lista_c_m2":40.0357,"lista_c_ml":5.605},{"id":69,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Translucent 7","marca":"Thermory","linea":"Vivid Translucent","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x115","largos":"3000-5400","ancho_com":0.115,"eur_lm":3.3,"eur_m2":28.6957,"lista_a_m2":73.6813,"lista_a_lm":8.4733,"lista_b_m2":61.917,"lista_b_lm":7.1205,"lista_c_m2":42.3261,"lista_c_ml":4.8675},{"id":70,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Opaque 10","marca":"Thermory","linea":"Vivid Opaque","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"26x68","largos":"3000-5400","ancho_com":0.068,"eur_lm":2.6,"eur_m2":38.2353,"lista_a_m2":98.176,"lista_a_lm":6.676,"lista_b_m2":82.5008,"lista_b_lm":5.6101,"lista_c_m2":56.3971,"lista_c_ml":3.835},{"id":71,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Silvered Shield","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"42x90","largos":"3000-5400","ancho_com":0.09,"eur_lm":4.3,"eur_m2":47.7778,"lista_a_m2":122.678,"lista_a_lm":11.041,"lista_b_m2":103.0908,"lista_b_lm":9.2782,"lista_c_m2":70.4722,"lista_c_ml":6.3425},{"id":72,"categoria":"Cladding Softwood","madera":"Thermo Pine","perfil":"C34 Mix&Match — Vivid Silvered Shield","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"42x68","largos":"3000-5400","ancho_com":0.068,"eur_lm":3.4,"eur_m2":50.0,"lista_a_m2":128.384,"lista_a_lm":8.7301,"lista_b_m2":107.8857,"lista_b_lm":7.3362,"lista_c_m2":73.75,"lista_c_ml":5.015},{"id":73,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C4B — Vivid Silvered L/D/S","marca":"Thermory","linea":"Vivid Silvered","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":3.85,"eur_m2":27.5,"lista_a_m2":70.6112,"lista_a_lm":9.8856,"lista_b_m2":59.3371,"lista_b_lm":8.3072,"lista_c_m2":40.5625,"lista_c_ml":5.6787},{"id":74,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C15 — Vivid Translucent 7","marca":"Thermory","linea":"Vivid Translucent","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x186","largos":"3000-5400","ancho_com":0.186,"eur_lm":5.25,"eur_m2":28.2258,"lista_a_m2":72.4748,"lista_a_lm":13.4803,"lista_b_m2":60.9032,"lista_b_lm":11.328,"lista_c_m2":41.6331,"lista_c_ml":7.7438},{"id":75,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C4B — Ignite 5 & 7","marca":"Thermory","linea":"Ignite","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x186","largos":"3000-5400","ancho_com":0.186,"eur_lm":6.84,"eur_m2":36.7742,"lista_a_m2":94.4244,"lista_a_lm":17.5629,"lista_b_m2":79.3482,"lista_b_lm":14.7588,"lista_c_m2":54.2419,"lista_c_ml":10.089},{"id":76,"categoria":"Cladding Softwood","madera":"Thermo Spruce","perfil":"C7J — Ignite 5 & 7","marca":"Thermory","linea":"Ignite","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"20x65","largos":"3000-5400","ancho_com":0.065,"eur_lm":3.0,"eur_m2":46.1538,"lista_a_m2":118.5083,"lista_a_lm":7.703,"lista_b_m2":99.5868,"lista_b_lm":6.4731,"lista_c_m2":68.0769,"lista_c_ml":4.425},{"id":77,"categoria":"Cladding Softwood","madera":"Thermo Spruce / Pine","perfil":"C34 Mix&Match — Stripes","marca":"Thermory","linea":"Stripes","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"19x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":4.5,"eur_m2":32.1429,"lista_a_m2":82.5326,"lista_a_lm":11.5546,"lista_b_m2":69.3551,"lista_b_lm":9.7097,"lista_c_m2":47.4107,"lista_c_ml":6.6375},{"id":78,"categoria":"Cladding Softwood","madera":"Thermo Spruce / Pine","perfil":"C34 Mix&Match — Stripes","marca":"Thermory","linea":"Stripes","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"19x90","largos":"3000-5400","ancho_com":0.09,"eur_lm":3.25,"eur_m2":36.1111,"lista_a_m2":92.7218,"lista_a_lm":8.345,"lista_b_m2":77.9175,"lista_b_lm":7.0126,"lista_c_m2":53.2639,"lista_c_ml":4.7938},{"id":79,"categoria":"Cladding Softwood","madera":"Thermo Spruce / Pine","perfil":"CAR10J — Stripes","marca":"Thermory","linea":"Stripes","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"25x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":5.2,"eur_m2":37.1429,"lista_a_m2":95.371,"lista_a_lm":13.3519,"lista_b_m2":80.1437,"lista_b_lm":11.2201,"lista_c_m2":54.7857,"lista_c_ml":7.67},{"id":80,"categoria":"Cladding Softwood","madera":"Thermo Spruce / Pine","perfil":"CAR10 — Stripes","marca":"Thermory","linea":"Stripes","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"25x140","largos":"3000-5400","ancho_com":0.14,"eur_lm":5.2,"eur_m2":37.1429,"lista_a_m2":95.371,"lista_a_lm":13.3519,"lista_b_m2":80.1437,"lista_b_lm":11.2201,"lista_c_m2":54.7857,"lista_c_ml":7.67},{"id":81,"categoria":"Cladding Softwood","madera":"Thermo Spruce / Pine","perfil":"C34 Mix&Match — Stripes","marca":"Thermory","linea":"Stripes","tipo":"Cladding","largo_fijo":"NO","end_match":"SI","medidas":"25x90","largos":"3000-5400","ancho_com":0.09,"eur_lm":3.95,"eur_m2":43.8889,"lista_a_m2":112.6926,"lista_a_lm":10.1423,"lista_b_m2":94.6997,"lista_b_lm":8.523,"lista_c_m2":64.7361,"lista_c_ml":5.8262}];
-const LOGO="__LOGO__";
+let activeFilter = 'all';
+let activeLists = {a:true, b:true, c:true};
 
-// ── FAVORITES ──────────────────────────────────────────────────────
-var _defaultFavs=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61];var favs=JSON.parse(localStorage.getItem('kk_favs')||JSON.stringify(_defaultFavs));
-function saveFavs(){ try{localStorage.setItem('kk_favs',JSON.stringify(favs));}catch(e){} }
-function isFav(id){ return favs.indexOf(id)>=0; }
-function toggleFav(id,e){
-  e.stopPropagation();
-  var i=favs.indexOf(id);
-  if(i>=0) favs.splice(i,1); else favs.push(id);
-  saveFavs();
+function catClass(c) {
+  return {Decking:'cat-dec','Cladding Hardwood':'cat-clh','Cladding Softwood':'cat-cls',Accesorios:'cat-acc'}[c] || 'cat-acc';
+}
+function catIcon(c) {
+  return {Decking:'🪵','Cladding Hardwood':'🌿','Cladding Softwood':'🌲',Accesorios:'🔧'}[c] || '';
+}
+function unitBadge(u) {
+  if (u==='m²') return '<span class="unit-badge unit-m2">m²</span>';
+  if (u==='m/l') return '<span class="unit-badge unit-ml">m/l</span>';
+  return '<span class="unit-badge unit-un">UN</span>';
+}
+
+function fmtPrice(val, currency, decimals) {
+  if (val===null || val===undefined) return '<span style="color:#ccc">—</span>';
+  return (currency||'USD') + ' ' + val.toFixed(decimals||2);
+}
+
+function setFilter(cat, btn) {
+  activeFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
   render();
 }
 
-var cat='',q='',madera='',sort='',expanded=null,showFavsOnly=false;
-var quote={items:[],client:'',cuit:'',iva:'Consumidor Final',contact:'',email:'',domicilio:'',localidad:'',provincia:'',date:'',num:'',payment:'',delivery:'',deadline:'',transporte:'',vencimiento:'',obs:''};
-var paymentTags=[];
-var obsTags=[];
-
-function dn(s){ return s?s.replace(/Maximo/g,'VJ Group'):s; }
-function fmt(v){
-  if(v==null)return null;
-  return '$\u00a0'+v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
-}
-function fmtNum(v){
-  if(v==null)return '';
-  return v.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
-}
-function hl(t,q){
-  if(!q||!t)return t||'';
-  var s=String(t);
-  q.trim().split(/\s+/).forEach(function(w){
-    if(!w)return;
-    var esc=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    s=s.replace(new RegExp('('+esc+')','gi'),'<mark>$1</mark>');
-  });
-  return s;
-}
-function filter(){
-  var terms=q?q.toLowerCase().split(/\s+/).filter(Boolean):[];
-  var src=showFavsOnly?D.filter(function(p){return isFav(p.id);}):D;
-  var items=src.filter(function(p){
-    if(cat&&p.categoria!==cat)return false;
-    if(madera&&p.madera!==madera)return false;
-    if(!terms.length)return true;
-    var hay=[p.madera,p.perfil,p.linea,p.medidas,p.largos,p.categoria,p.tipo,p.marca].join(' ').toLowerCase();
-    return terms.every(function(t){return hay.indexOf(t)>=0});
-  });
-  if(sort==='asc') items.sort(function(a,b){return (a.lista_a_m2||Infinity)-(b.lista_a_m2||Infinity)});
-  else if(sort==='desc') items.sort(function(a,b){return (b.lista_a_m2||0)-(a.lista_a_m2||0)});
-  return items;
-}
-function todayStr(){
-  var d=new Date();
-  return d.getDate().toString().padStart(2,'0')+'/'+(d.getMonth()+1).toString().padStart(2,'0')+'/'+d.getFullYear();
-}
-function quoteNum(){
-  var d=new Date();
-  return 'KK-'+d.getFullYear().toString().slice(2)+(d.getMonth()+1).toString().padStart(2,'0')+d.getDate().toString().padStart(2,'0')+'-'+Math.floor(Math.random()*900+100);
-}
-function listaUnit(lista){ return lista==='C'?'mt/l':'m\u00b2'; }
-function listaColor(lista){ return lista==='A'?'#1A6B4A':lista==='B'?'#1A4A8A':'#C87941'; }
-
-/* ── FAVORITES PANEL TOGGLE ──────────────────── */
-function toggleFavsView(){
-  showFavsOnly=!showFavsOnly;
-  cat='';madera='';q='';document.getElementById('q').value='';
-  document.getElementById('clr').style.display='none';
-  document.getElementById('f-madera').value='';
-  expanded=null;
-  document.querySelectorAll('.chip').forEach(function(c){
-    if(c.id==='fav-chip') c.classList.toggle('on',showFavsOnly);
-    else c.classList.toggle('on', c.dataset.cat==='' && !showFavsOnly);
-  });
-  document.getElementById('fav-banner').style.display=showFavsOnly?'block':'none';
+function toggleList(list) {
+  activeLists[list] = !activeLists[list];
+  const btn = document.getElementById('btn-'+list);
+  btn.className = activeLists[list] ? 'list-btn active-'+list : 'list-btn';
+  document.querySelectorAll('.col-'+list).forEach(el => el.style.display = activeLists[list] ? '' : 'none');
   render();
 }
 
-/* ── ADD TO QUOTE MODAL ─────────────────────────────── */
-function openAddModal(pid){
-  var p=D.find(function(x){return x.id===pid;});
-  if(!p)return;
-  document.getElementById('am-title').textContent=p.madera+' \u2014 '+p.perfil;
-  document.getElementById('am-sub').textContent=p.medidas+(p.largos?' \u00b7 '+p.largos:'');
-  document.getElementById('am-qty').value='';
-  document.getElementById('am-pid').value=pid;
-  var sel=document.getElementById('am-lista');
-  sel.innerHTML='';
-  [{k:'A',price:p.lista_a_m2,unit:'m\u00b2'},{k:'B',price:p.lista_b_m2,unit:'m\u00b2'},{k:'C',price:p.lista_c_m2,unit:'m\u00b2'}].forEach(function(l){
-    if(l.price!=null){var o=document.createElement('option');o.value=l.k;o.textContent='Lista '+l.k+' \u2014 '+fmt(l.price)+'/'+l.unit;sel.appendChild(o);}
-  });
-  document.getElementById('am-lf').checked=false;
-  document.getElementById('am-em').checked=false;
-  obsTags=[];
-  renderObsTags();
-  updateModalPrice();updateQtyLabel();
-  document.getElementById('add-modal').style.display='flex';
-  document.getElementById('am-qty').focus();
-}
-function closeAddModal(){
-  document.getElementById('add-modal').style.display='none';
-  var e=document.getElementById('am-obs');if(e)e.value='';
-}
-function updateQtyLabel(){
-  var lista=document.getElementById('am-lista').value||'A';
-  var lbl=document.getElementById('am-qty-label');
-  if(lbl)lbl.textContent='Cantidad ('+(lista==='C'?'ml':'m\u00b2')+')';
-}
-function confirmAdd(){
-  var pid=parseInt(document.getElementById('am-pid').value);
-  var qty=parseFloat(document.getElementById('am-qty').value);
-  var lista=document.getElementById('am-lista').value;
-  if(!qty||qty<=0){document.getElementById('am-qty').focus();return;}
-  var p=D.find(function(x){return x.id===pid;});if(!p)return;
-  var lf=document.getElementById('am-lf').checked;
-  var em=document.getElementById('am-em').checked;
-  var mult=(1+(lf?0.1:0)+(em?0.04:0));
-  var basePrice=(lista==='A'?p.lista_a_m2:lista==='B'?p.lista_b_m2:p.lista_c_m2);
-  var precio_m2=Math.round(basePrice*mult*100)/100;
-  var precio_ml=(lista==='C'&&p.lista_c_ml)?Math.round(p.lista_c_ml*mult*100)/100:null;
-  var precioShow=(lista==='C'&&precio_ml)?precio_ml:precio_m2;
-  var unit=listaUnit(lista);
-  var obs=getObsValue();
-  quote.items.push({
-    pid:pid,lista:lista,madera:p.madera,perfil:p.perfil,linea:p.linea,
-    medidas:p.medidas,largos:p.largos,largo_fijo:lf,end_match:em,
-    precio:precioShow,precio_m2:precio_m2,unit:unit,qty:qty,obs:obs,
-    total:Math.round(precio_m2*qty*100)/100
-  });
-  closeAddModal();renderQuoteBtn();
-}
-
-/* ── CUIT LOOKUP ─────────────────────────────── */
-var _cuitTimer=null;
-function onCuitInput(val){
-  var d=val.replace(/\D/g,'');
-  var btn=document.getElementById('arca-btn');
-  if(btn)btn.style.opacity=(d.length===11)?'1':'0.5';
-  clearTimeout(_cuitTimer);
-  if(d.length===11)_cuitTimer=setTimeout(function(){lookupCuit(true);},800);
-  else if(d.length>0)_cuitStatus('','');
-}
-function _cuitStatus(type,msg){
-  var el=document.getElementById('arca-status');if(!el)return;
-  if(!msg){el.style.display='none';el.textContent='';return;}
-  el.style.display='block';
-  var map={ok:'#1a7a3c',err:'#b0281a',loading:'#888',warn:'#8a5e1a'};
-  el.style.color=map[type]||'#888';el.textContent=msg;
-}
-function _applyContrib(c){
-  var nombre=c.nombre||c.razonSocial||c.apellido||'';
-  if(c.apellido&&c.nombre&&c.apellido!==c.nombre)nombre=c.apellido+', '+c.nombre;
-  function set(id,v){var e=document.getElementById(id);if(e&&v)e.value=(v+'').trim();}
-  set('qc-client',nombre);
-  var ivaEl=document.getElementById('qc-iva');
-  var ivaDescObj=c.tipoIva||c.iva||null;
-  if(ivaDescObj&&ivaEl){
-    var code=String(ivaDescObj.codigo||ivaDescObj.id||ivaDescObj||'');
-    var ivaMap={'1':'Responsable Inscripto','2':'Responsable Inscripto','3':'Responsable Inscripto',
-                '4':'Exento','5':'Exento','6':'Consumidor Final','13':'Monotributista','14':'Monotributista'};
-    var ivaStr=ivaMap[code]||ivaDescObj.descripcion||String(ivaDescObj);
-    for(var i=0;i<ivaEl.options.length;i++){if(ivaEl.options[i].text.toLowerCase().indexOf(ivaStr.toLowerCase().split(' ')[0])>=0){ivaEl.selectedIndex=i;break;}}
-  }
-  var df=c.domicilioFiscal||null;
-  if(!df&&c.domicilio&&c.domicilio.length)df=c.domicilio[0];
-  if(df){
-    var dir=(df.direccion||df.calle||'').trim();
-    if(df.numero&&df.numero!=='0')dir+=' '+df.numero;
-    if(df.piso)dir+=' Piso '+df.piso;
-    if(df.departamento)dir+=' Dpto '+df.departamento;
-    set('qc-domicilio',dir);set('qc-localidad',df.descripcionLocalidad||df.localidad||'');
-    set('qc-provincia',df.descripcionProvincia||df.provincia||'');
-  }
-  return nombre;
-}
-function lookupCuit(auto){
-  var raw=document.getElementById('qc-cuit').value;
-  var cuit=raw.replace(/[\.\-\s]/g,'');
-  if(cuit.length!==11){if(!auto)_cuitStatus('err','CUIT inválido');return;}
-  _cuitStatus('loading','Consultando padrón…');
-  var attempt=0;
-  function tryAfip(){
-    attempt++;
-    fetch('https://soa.afip.gob.ar/sr-padron/v2/persona/'+cuit,{headers:{'Accept':'application/json'},cache:'no-cache'})
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
-    .then(function(d){
-      var c=d&&d.data?d.data:d;
-      if(c&&(c.nombre||c.razonSocial)){var n=_applyContrib(c);_cuitStatus('ok','✓ '+n);}
-      else _cuitStatus('err','CUIT no encontrado');
-    })
-    .catch(function(){if(attempt<3)setTimeout(tryAfip,300);else tryTango();});
-  }
-  function tryTango(){
-    fetch('https://afip.tangofactura.com/Rest/GetContribuyenteFull?cuit='+cuit,{headers:{'Accept':'application/json'},cache:'no-cache'})
-    .then(function(r){if(!r.ok)throw new Error();return r.json();})
-    .then(function(d){
-      var c=d&&d.contribuyente?d.contribuyente:d;
-      if(c&&(c.nombre||c.razonSocial)){var n=_applyContrib(c);_cuitStatus('ok','✓ '+n);}
-      else _cuitStatus('err','Sin datos para ese CUIT');
-    })
-    .catch(function(){_cuitStatus('err','No se pudo conectar al padrón');});
-  }
-  tryAfip();
-}
-
-function renderQuoteBtn(){
-  var btn=document.getElementById('quote-fab');
-  var n=quote.items.length;
-  btn.style.display=n>0?'flex':'none';
-  document.getElementById('fab-count').textContent=n;
-}
-function addPaymentTag(){
-  var sel=document.getElementById('qc-payment-sel');var val=sel.value;if(!val)return;
-  if(paymentTags.indexOf(val)<0){paymentTags.push(val);renderPaymentTags();syncPaymentInput();}
-  sel.value='';
-}
-function removePaymentTag(idx){paymentTags.splice(idx,1);renderPaymentTags();syncPaymentInput();}
-function renderPaymentTags(){
-  var c=document.getElementById('pay-tags-container');if(!c)return;
-  c.innerHTML=paymentTags.map(function(t,i){
-    return '<span class="pay-tag">'+t+'<button class="pay-tag-x" onclick="removePaymentTag('+i+')" type="button">&times;</button></span>';
-  }).join('');
-}
-function syncPaymentInput(){
-  var inp=document.getElementById('qc-payment');if(inp)inp.value=paymentTags.join(' | ');
-  if(quote)quote.payment=paymentTags.join(' | ');
-}
-function addObsTag(){
-  var sel=document.getElementById('obs-preset');var val=sel.value;if(!val)return;
-  if(obsTags.indexOf(val)<0){obsTags.push(val);renderObsTags();}
-  sel.value='';
-}
-function removeObsTag(idx){obsTags.splice(idx,1);renderObsTags();}
-function renderObsTags(){
-  var c=document.getElementById('obs-tags-container');if(!c)return;
-  c.innerHTML=obsTags.map(function(t,i){
-    return '<span class="pay-tag" style="background:#3B5A8A;font-size:10.5px">'+t+'<button class="pay-tag-x" onclick="removeObsTag('+i+')" type="button">&times;</button></span>';
-  }).join('');
-}
-function getObsValue(){
-  var tags=obsTags.slice();
-  var custom=document.getElementById('am-obs');
-  if(custom&&custom.value.trim())tags.push(custom.value.trim());
-  return tags.join(' \u00b7 ');
-}
-function openQuote(){
-  if(!quote.date)quote.date=todayStr();
-  if(!quote.num)quote.num=quoteNum();
-  if(quote.payment&&paymentTags.join(' | ')!==quote.payment)
-    paymentTags=quote.payment.split(' | ').filter(function(x){return x.trim();});
-  renderPaymentTags();
-  renderQuotePanel();
-  document.getElementById('quote-panel').style.display='block';
-}
-function closeQuote(){document.getElementById('quote-panel').style.display='none';}
-function removeItem(idx){
-  quote.items.splice(idx,1);renderQuoteBtn();renderQuotePanel();
-  if(quote.items.length===0)closeQuote();
-}
-function updateQty(idx,val){
-  var qty=parseFloat(val);if(!qty||qty<=0)return;
-  quote.items[idx].qty=qty;
-  quote.items[idx].total=Math.round(quote.items[idx].precio*qty*100)/100;
-  renderQuotePanel();
-}
-function updateModalPrice(){
-  var pid=parseInt(document.getElementById('am-pid').value);if(isNaN(pid))return;
-  var p=D.find(function(x){return x.id===pid;});if(!p)return;
-  var lf=document.getElementById('am-lf').checked;
-  var em=document.getElementById('am-em').checked;
-  var mult=(1+(lf?0.1:0)+(em?0.04:0));
-  var lista=document.getElementById('am-lista').value||'A';
-  var base=(lista==='A'?p.lista_a_m2:lista==='B'?p.lista_b_m2:p.lista_c_m2);
-  var precio_m2=base?Math.round(base*mult*100)/100:null;
-  var precio_ml=(lista==='C'&&p.lista_c_ml)?Math.round(p.lista_c_ml*mult*100)/100:null;
-  var precioShow=(lista==='C'&&precio_ml)?precio_ml:precio_m2;
-  var unit=listaUnit(lista);
-  var el=document.getElementById('am-price-preview');
-  var color=listaColor(lista);
-  if(el)el.innerHTML=precioShow?('<span style="color:'+color+'">$ '+fmtNum(precioShow)+' / '+unit+'</span>'):'';
-}
-
-function renderQuotePanel(){
-  var total=quote.items.reduce(function(s,i){return s+i.total;},0);
-  var rows=quote.items.map(function(it,idx){
-    var color=listaColor(it.lista);
-    var bg=it.lista==='A'?'#EAF4EB':it.lista==='B'?'#E8F0FB':'#FEF3E2';
-    return '<tr>'
-      +'<td style="padding:10px 12px;border-bottom:1px solid #F0E8D8">'
-      +'<div style="font-weight:600;font-size:13px;color:#1A1410">'+it.madera+'</div>'
-      +'<div style="font-size:11.5px;color:#7A5C3E">'+it.perfil+'</div>'
-      +'<div style="font-size:11px;color:#A89880">'+it.medidas+(it.largos?' \u00b7 '+it.largos:'')+'</div>'
-      +(it.largo_fijo?'<span style="font-size:10px;background:#FDF4E3;color:#9B6E1A;padding:1px 5px;border-radius:4px;display:inline-block;margin-top:2px">LF+10%</span>':'')
-      +(it.end_match?'<span style="font-size:10px;background:#EDF7F0;color:#2A7A4B;padding:1px 5px;border-radius:4px;display:inline-block;margin-top:2px;margin-left:3px">EM+4%</span>':'')
-      +(it.obs?'<div style="font-size:11px;color:#7A5C3E;margin-top:4px;font-style:italic">\u270e '+it.obs+'</div>':'')
-      +'</td>'
-      +'<td style="padding:10px 8px;border-bottom:1px solid #F0E8D8;text-align:center">'
-      +'<span style="background:'+bg+';color:'+color+';font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px">'+it.lista+'</span></td>'
-      +'<td style="padding:10px 8px;border-bottom:1px solid #F0E8D8;text-align:right;font-size:12px;color:#5C4A36">'+fmtNum(it.precio)+'<br><span style="font-size:10px;color:#A89880">/'+it.unit+'</span></td>'
-      +'<td style="padding:10px 8px;border-bottom:1px solid #F0E8D8;text-align:center">'
-      +'<input type="number" value="'+it.qty+'" min="0.1" step="0.1" style="width:60px;padding:4px 6px;border:1.5px solid #D4C8B8;border-radius:6px;font-size:13px;text-align:center" onchange="updateQty('+idx+',this.value)"><div style="font-size:10px;color:#A89880;margin-top:2px">'+it.unit+'</div></td>'
-      +'<td style="padding:10px 8px;border-bottom:1px solid #F0E8D8;text-align:right;font-size:13px;font-weight:700;color:#1A1410">'+fmtNum(it.total)+'</td>'
-      +'<td style="padding:10px 8px;border-bottom:1px solid #F0E8D8;text-align:center"><button onclick="removeItem('+idx+')" style="background:none;border:none;cursor:pointer;color:#C4A882;font-size:16px;padding:2px 4px">&times;</button></td>'
-      +'</tr>';
-  }).join('');
-  document.getElementById('qp-items').innerHTML=
-    '<table style="width:100%;border-collapse:collapse">'
-    +'<thead><tr style="background:#FAFAF8">'
-    +'<th style="padding:8px 12px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A89880;text-align:left">Producto</th>'
-    +'<th style="padding:8px 8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A89880;text-align:center">Lista</th>'
-    +'<th style="padding:8px 8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A89880;text-align:right">Precio</th>'
-    +'<th style="padding:8px 8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A89880;text-align:center">Cant.</th>'
-    +'<th style="padding:8px 8px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A89880;text-align:right">Total</th>'
-    +'<th style="padding:8px 8px"></th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table>';
-  var ivaTotal=total*0.21;var totalConIva=total+ivaTotal;
-  document.getElementById('qp-total').innerHTML=
-    '<div style="font-size:10px;color:#aaa;font-weight:400;letter-spacing:.02em;text-transform:uppercase;margin-bottom:6px">Subtotal (s/IVA)</div>'
-    +'<div style="font-size:16px;font-weight:600;color:var(--ink)">USD '+fmtNum(Math.round(total*100)/100)+'</div>'
-    +'<div style="font-size:11px;color:var(--mid);margin-top:3px">IVA 21%: USD '+fmtNum(Math.round(ivaTotal*100)/100)+'</div>'
-    +'<div style="font-size:20px;font-weight:700;color:var(--ink);margin-top:4px;border-top:1px solid var(--light);padding-top:6px">USD '+fmtNum(Math.round(totalConIva*100)/100)+'</div>';
-  var _f=function(id,val){var el=document.getElementById(id);if(el)el.value=val||'';};
-  _f('qc-client',quote.client);_f('qc-date',quote.date);_f('qc-num',quote.num);
-  _f('qc-cuit',quote.cuit);_f('qc-contact',quote.contact);_f('qc-email',quote.email);
-  _f('qc-domicilio',quote.domicilio);_f('qc-localidad',quote.localidad);_f('qc-provincia',quote.provincia);
-  _f('qc-delivery',quote.delivery);_f('qc-deadline',quote.deadline);
-  _f('qc-transporte',quote.transporte);_f('qc-vencimiento',quote.vencimiento);_f('qc-obs',quote.obs);
-  var ivaEl=document.getElementById('qc-iva');if(ivaEl&&quote.iva)ivaEl.value=quote.iva;
-}
-
-/* ── PDF GENERATION ──────────────────────────── */
-function generatePDF(){
-  var _r=function(id){var el=document.getElementById(id);return el?el.value:'';};
-  quote.client=_r('qc-client');quote.date=_r('qc-date');quote.num=_r('qc-num');
-  quote.cuit=_r('qc-cuit');quote.contact=_r('qc-contact');quote.email=_r('qc-email');
-  quote.domicilio=_r('qc-domicilio');quote.localidad=_r('qc-localidad');quote.provincia=_r('qc-provincia');
-  quote.payment=_r('qc-payment')||paymentTags.join(' | ');quote.delivery=_r('qc-delivery');
-  quote.deadline=_r('qc-deadline');quote.transporte=_r('qc-transporte');
-  quote.vencimiento=_r('qc-vencimiento');quote.obs=_r('qc-obs');
-  var ivaEl=document.getElementById('qc-iva');if(ivaEl)quote.iva=ivaEl.value;
-  if(!quote.client){document.getElementById('qc-client').focus();return;}
-  var subtotal=quote.items.reduce(function(s,i){return s+i.total;},0);
-  var ivaAmount=quote.items.reduce(function(s,it){
-    var isParky=(it.linea&&it.linea.toLowerCase().indexOf('parky')>=0);
-    return s+(isParky?0:it.total*0.21);
-  },0);
-  var totalConIva=subtotal+ivaAmount;
-  var numDisplay=(quote.num||'').replace(/^(\d+)$/,function(m,n){return n.padStart(8,'0');});
-  var rows=quote.items.map(function(it,idx){
-    var color=listaColor(it.lista);
-    var bg=it.lista==='A'?'#EAF4EB':it.lista==='B'?'#E8F0FB':'#FEF3E2';
-    var isParky=(it.linea&&it.linea.toLowerCase().indexOf('parky')>=0);
-    var ivaPct=isParky?'0%':'21%';
-    return '<tr style="background:'+(idx%2===0?'#fff':'#FAFAFA')+'">'
-      +'<td style="padding:8px 10px;border-bottom:1px solid #E8E0D5;vertical-align:top;font-size:11.5px">'
-      +'<strong>'+it.madera+' \u2014 '+it.perfil+'</strong>'
-      +'<div style="color:#7A5C3E;font-size:10.5px;margin-top:1px">'+dn(it.linea)+'</div>'
-      +'<div style="color:#A89880;font-size:10px">'+it.medidas+(it.largos?' \u00b7 '+it.largos:'')+(it.largo_fijo?' \u00b7 Largo Fijo +10%':'')+(it.end_match?' \u00b7 EndMatch +4%':'')+'</div>'
-      +(it.obs?'<div style="color:#5C4A36;font-size:10px;margin-top:2px;font-style:italic">'+it.obs+'</div>':'')
-      +'</td>'
-      +'<td style="padding:8px 8px;border-bottom:1px solid #E8E0D5;text-align:center;vertical-align:middle"><span style="background:'+bg+';color:'+color+';font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px">'+it.lista+'</span></td>'
-      +'<td style="padding:8px 8px;border-bottom:1px solid #E8E0D5;text-align:right;vertical-align:middle;font-size:11.5px;color:#5C4A36">$ '+fmtNum(it.precio)+' / '+it.unit+'</td>'
-      +'<td style="padding:8px 8px;border-bottom:1px solid #E8E0D5;text-align:center;vertical-align:middle;font-size:11.5px">'+fmtNum(it.qty)+' '+it.unit+'</td>'
-      +'<td style="padding:8px 8px;border-bottom:1px solid #E8E0D5;text-align:center;vertical-align:middle;font-size:10.5px;color:#7A5C3E">'+ivaPct+'</td>'
-      +'<td style="padding:8px 8px;border-bottom:1px solid #E8E0D5;text-align:right;vertical-align:middle;font-size:12px;font-weight:700">$ '+fmtNum(it.total)+'</td>'
-      +'</tr>';
-  }).join('');
-  var html='<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;background:#fff;color:#111;font-size:12px}table{border-collapse:collapse}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>'
-    +'<div style="max-width:800px;margin:0 auto;padding:20px 24px">'
-    +'<table style="width:100%;border:1.5px solid #222;margin-bottom:0"><tr>'
-    +'<td style="padding:12px 16px;width:200px;vertical-align:middle;border-right:1px solid #222"><img src="data:image/png;base64,'+LOGO+'" style="height:70px;width:auto;display:block" alt="Kokkai"></td>'
-    +'<td style="padding:10px 14px;vertical-align:middle;text-align:center;border-right:1px solid #222"><div style="font-size:13px;font-weight:700">FRANCO FAGGIONI</div><div style="font-size:11px;margin-top:3px">RUTA 11 KM 396 - COLECTORA 3, LOCAL 13, GRAL MADARIAGA</div><div style="font-size:11px;margin-top:2px">TEL: 2254614042</div><div style="font-size:11px;margin-top:2px">info@kokkaiyakisugi.ar</div></td>'
-    +'<td style="padding:10px 14px;width:60px;vertical-align:middle;text-align:center;border-right:1px solid #222"><div style="border:2px solid #222;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;margin:0 auto">X</div></td>'
-    +'<td style="padding:10px 14px;width:220px;vertical-align:middle;text-align:right"><div style="font-size:20px;font-weight:900;letter-spacing:.03em">PRESUPUESTO</div><div style="font-size:17px;font-weight:700;margin-top:2px">N\u00ba '+numDisplay+'</div><div style="font-size:13px;font-weight:700;margin-top:2px">FECHA: '+quote.date+'</div><div style="font-size:9.5px;margin-top:6px;line-height:1.5">RESPONSABLE INSCRIPTO &nbsp; CUIT: 20329525040<br>INICIO ACT.: 30/06/2023 &nbsp; ING. BRUTOS: 20329525040</div></td>'
-    +'</tr></table>'
-    +'<table style="width:100%;border:1.5px solid #222;border-top:none;margin-bottom:0"><tr>'
-    +'<td style="padding:7px 12px;vertical-align:top;width:50%;border-right:1px solid #bbb"><div style="line-height:1.9;font-size:11.5px"><div><strong>SE\u00d1OR/ES:</strong> '+quote.client+'</div><div><strong>DOMICILIO:</strong> '+quote.domicilio+'</div><div><strong>LOCALIDAD:</strong> '+quote.localidad+'</div><div><strong>CORREO ELECTRONICO:</strong> '+quote.email+'</div><div><strong>VENDEDOR:</strong> FAGGIONI, FRANCO</div><div><strong>CONDICION PAGO:</strong> '+quote.payment+'</div></div></td>'
-    +'<td style="padding:7px 12px;vertical-align:top;font-size:11.5px"><div style="line-height:1.9"><div><strong>IVA:</strong> '+quote.iva+' &nbsp;&nbsp; <strong>CUIT:</strong> '+quote.cuit+'</div><div><strong>PROVINCIA:</strong> '+quote.provincia+'</div><div><strong>TELEFONOS:</strong> '+quote.contact+'</div><div><strong>FECHA VENCIMIENTO:</strong> '+quote.vencimiento+'</div></div></td>'
-    +'</tr></table>'
-    +'<table style="width:100%;border:1.5px solid #222;border-top:none;margin-bottom:0"><tr>'
-    +'<td style="padding:6px 12px;font-size:11.5px;width:50%;border-right:1px solid #bbb"><div><strong>LUGAR ENTREGA:</strong> '+quote.delivery+'</div><div><strong>PLAZO ENTREGA:</strong> '+quote.deadline+'</div></td>'
-    +'<td style="padding:6px 12px;font-size:11.5px"><strong>TRANSPORTE ENTREGA:</strong> '+quote.transporte+'</td>'
-    +'</tr></table>'
-    +'<table style="width:100%;border:1.5px solid #222;border-top:none;margin-bottom:12px"><tr><td style="padding:6px 12px;font-size:11.5px"><strong>OBSERVACIONES:</strong> '+quote.obs+'</td></tr></table>'
-    +'<table style="width:100%;border-collapse:collapse;margin-bottom:4px"><thead><tr style="background:#1A1410">'
-    +'<th style="padding:8px 10px;font-size:9.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#C4A882;text-align:left">Producto</th>'
-    +'<th style="padding:8px 8px;font-size:9.5px;font-weight:700;color:#C4A882;text-align:center">Lista</th>'
-    +'<th style="padding:8px 8px;font-size:9.5px;font-weight:700;color:#C4A882;text-align:right">Precio unit.</th>'
-    +'<th style="padding:8px 8px;font-size:9.5px;font-weight:700;color:#C4A882;text-align:center">Cantidad</th>'
-    +'<th style="padding:8px 8px;font-size:9.5px;font-weight:700;color:#BFA87A;text-align:center">IVA</th>'
-    +'<th style="padding:8px 8px;font-size:9.5px;font-weight:700;color:#C4A882;text-align:right">Subtotal USD</th>'
-    +'</tr></thead><tbody>'+rows+'</tbody></table>'
-    +'<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:14px;margin-bottom:24px">'
-    +'<div style="font-size:10px;color:#7A5C3E;max-width:300px;line-height:1.5">* Precios en USD. Cot. v\u00e1lida 7 d\u00edas h\u00e1biles. Sujeta a disponibilidad de stock.<br>Precios expresados en d\u00f3lares. Ancho bruto puede diferir del nominal.</div>'
-    +'<div style="min-width:270px">'
-    +'<div style="display:flex;justify-content:space-between;padding:6px 14px;font-size:12px;border-bottom:1px solid #E8E0D5"><span>SUBTOTAL U$D</span><span style="font-weight:600">$ '+fmtNum(Math.round(subtotal*100)/100)+'</span></div>'
-    +(ivaAmount>0.001?'<div style="display:flex;justify-content:space-between;padding:6px 14px;font-size:12px;border-bottom:1px solid #E8E0D5"><span>MONTO IVA U$D</span><span style="font-weight:600">$ '+fmtNum(Math.round(ivaAmount*100)/100)+'</span></div>':'')
-    +'<div style="display:flex;justify-content:space-between;padding:8px 14px;background:#1A1410;color:#fff"><span style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#C4A882">TOTAL U$D</span><span style="font-size:18px;font-weight:700">$ '+fmtNum(Math.round(totalConIva*100)/100)+'</span></div>'
-    +'</div></div>'
-    +'<div style="border-top:1px solid #E8E0D5;padding-top:10px;font-size:10px;color:#A89880;line-height:1.6">Kokkai Yakisugi \u00b7 info@kokkaiyakisugi.ar \u00b7 Tel: 2254614042</div>'
-    +'</div><scr'+'ipt>window.onload=function(){window.print();}</scr'+'ipt></body></html>';
-  var w=window.open('','_blank');w.document.write(html);w.document.close();
-}
-
-/* ── MAIN RENDER ──────────────────────────────── */
-function priceRow(lista,m2,ml){
-  var price=m2;
-  var color=listaColor(lista);
-  var bg=lista==='A'?'#EAF4EB':lista==='B'?'#E8F0FB':'#FEF3E2';
-  var priceCell;
-  if(price!=null){
-    if(lista==='C'&&ml!=null){
-      priceCell='<td style="padding:10px 14px;border-bottom:1px solid #F0EAE0;text-align:right;font-weight:700;color:'+color+'">'+fmt(price)+'<span class="iva-note">+IVA</span><br><span style="font-size:11px;font-weight:400;color:'+color+'">'+fmt(ml)+'</span></td>'
-        +'<td style="padding:10px 14px;border-bottom:1px solid #F0EAE0;text-align:left;font-size:11px;color:#A89880">/ m\u00b2<br>/ mt/l</td>';
-    } else {
-      priceCell='<td style="padding:10px 14px;border-bottom:1px solid #F0EAE0;text-align:right;font-weight:700;color:'+color+'">'+fmt(price)+'<span class="iva-note">+IVA</span></td>'
-        +'<td style="padding:10px 14px;border-bottom:1px solid #F0EAE0;text-align:left;font-size:11px;color:#A89880">/ m\u00b2</td>';
+function render() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const filtered = D.filter(item => {
+    if (activeFilter !== 'all' && item.cat !== activeFilter) return false;
+    if (q) {
+      const hay = [item.madera, item.perfil, item.linea, item.medidas, item.largos].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
     }
-  } else {
-    priceCell='<td style="padding:10px 14px;border-bottom:1px solid #F0EAE0;text-align:right;color:#C4A882" colspan="2">&mdash;</td>';
-  }
-  return '<tr>'
-    +'<td style="padding:10px 14px;border-bottom:1px solid #F0EAE0"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;font-size:11px;font-weight:700;background:'+bg+';color:'+color+'">'+lista+'</span></td>'
-    +priceCell+'</tr>';
-}
-
-function render(){
-  var items=filter();
-  var totalSrc=showFavsOnly?D.filter(function(p){return isFav(p.id);}).length:D.length;
-  var favCount=favs.length;
-  document.getElementById('cnt').textContent=
-    (showFavsOnly?'\u2605 '+items.length+' favorito'+(items.length!==1?'s':''):items.length+' producto'+(items.length!==1?'s':''))
-    +(favCount>0&&!showFavsOnly?' \u00b7 \u2605'+favCount:'');
-  var el=document.getElementById('list');
-  if(!items.length){
-    el.innerHTML='<div class="empty">'+(showFavsOnly?'No tenés favoritos a\u00fan. Tap \u2605 para guardar productos.':'Sin resultados.')+'</div>';
-    return;
-  }
-  var html='';
-  items.forEach(function(p){
-    var id='p'+p.id;
-    var isOpen=expanded===p.id;
-    var fav=isFav(p.id);
-    var catStr=dn(p.categoria+(p.linea&&p.linea!==p.categoria?' \u00b7 '+p.linea:''));
-    var subStr=p.medidas+(p.largos?' \u2014 '+p.largos:'');
-    var prevM2=fmt(p.lista_a_m2);
-    var preview=prevM2
-      ?'<div class="row-preview"><div class="prev-a">'+prevM2+'</div><div class="prev-label">m\u00b2 \u00b7 A</div><div class="prev-note">+ IVA</div></div>'
-      :'';
-    var detail='';
-    if(isOpen){
-      var specs='';
-      if(p.medidas)specs+='<span class="spec"><b>'+hl(p.medidas,q)+'</b></span>';
-      if(p.largos)specs+='<span class="spec">largo <b>'+hl(p.largos,q)+'</b></span>';
-      if(p.largo_fijo==='SI')specs+='<span class="spec" style="background:#FDF4E3;color:#9B6E1A">largo fijo +10%</span>';
-      if(p.end_match==='SI')specs+='<span class="spec" style="background:#EDF7F0;color:#2A7A4B">endmatch +4%</span>';
-      detail='<div class="row-detail open">'
-        +(specs?'<div class="specs-bar">'+specs+'</div>':'')
-        +'<table style="width:100%;border-collapse:collapse">'
-        +'<thead><tr style="background:#FAFAF8">'
-        +'<th style="padding:8px 14px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A89880;text-align:left;border-bottom:1px solid var(--light)">Lista</th>'
-        +'<th style="padding:8px 14px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A89880;text-align:right;border-bottom:1px solid var(--light)">Precio</th>'
-        +'<th style="padding:8px 14px;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#A89880;text-align:left;border-bottom:1px solid var(--light)">Unidad</th>'
-        +'</tr></thead><tbody>'
-        +priceRow('A',p.lista_a_m2,null)
-        +priceRow('B',p.lista_b_m2,null)
-        +priceRow('C',p.lista_c_m2,p.lista_c_ml||null)
-        +'</tbody></table>'
-        +'<div style="padding:12px 14px;border-top:1px solid #E8E0D5;background:#FAFAF8">'
-        +'<button onclick="openAddModal('+p.id+')" style="width:100%;padding:10px;background:var(--ink);color:var(--gold);border:none;border-radius:6px;font-size:12px;font-weight:600;letter-spacing:.04em;cursor:pointer">+ Agregar a cotizaci\u00f3n</button>'
-        +'</div>'
-        +'</div>';
-    }
-    html+='<div class="row'+(fav?' is-fav':'')+'" id="'+id+'">'
-      +'<div class="row-head" onclick="toggle('+p.id+')">'
-      +'<button class="fav-btn'+(fav?' active':'')+'" onclick="toggleFav('+p.id+',event)" title="'+(fav?'Quitar de favoritos':'Guardar en favoritos')+'">'+(fav?'\u2605':'\u2606')+'</button>'
-      +'<div class="row-info">'
-      +'<div class="row-cat">'+catStr+'</div>'
-      +'<div class="row-name">'+hl(p.madera,q)+'</div>'
-      +'<div class="row-sub">'+hl(p.perfil,q)+(subStr?' \u00b7 '+hl(subStr,q):'')+'</div>'
-      +'</div>'
-      +preview
-      +'<span class="row-chevron'+(isOpen?' open':'')+'">&#8964;</span>'
-      +'</div>'
-      +detail
-      +'</div>';
+    return true;
   });
-  el.innerHTML=html;
-}
-function toggle(id){
-  expanded=(expanded===id)?null:id;render();
-  if(expanded!==null){var el=document.getElementById('p'+id);if(el){setTimeout(function(){el.scrollIntoView({behavior:'smooth',block:'nearest'})},50);}}
-}
-document.getElementById('q').addEventListener('input',function(e){
-  q=e.target.value;document.getElementById('clr').style.display=q?'block':'none';expanded=null;render();
-});
-document.getElementById('clr').addEventListener('click',function(){
-  document.getElementById('q').value='';q='';expanded=null;this.style.display='none';render();
-});
-document.getElementById('f-madera').addEventListener('change',function(){madera=this.value;expanded=null;render();});
-document.getElementById('f-sort').addEventListener('change',function(){sort=this.value;render();});
-document.getElementById('chips').addEventListener('click',function(e){
-  var btn=e.target.closest('.chip');if(!btn)return;
-  if(btn.id==='fav-chip'){toggleFavsView();return;}
-  // When in favs view, category chips filter WITHIN favs (don't exit favs mode)
-  cat=btn.dataset.cat;
-  if(!showFavsOnly){
-    document.querySelectorAll('.chip').forEach(function(c){c.classList.toggle('on',c===btn)});
-  } else {
-    // In favs mode: highlight the selected cat chip but keep fav-chip highlighted too
-    document.querySelectorAll('.chip:not(#fav-chip)').forEach(function(c){c.classList.toggle('on',c===btn)});
-  }
-  expanded=null;render();
-});
-document.getElementById('add-modal').addEventListener('click',function(e){if(e.target===this)closeAddModal();});
-document.getElementById('am-lista').addEventListener('change',function(){updateModalPrice();updateQtyLabel();});
-render();renderQuoteBtn();
 
+  let html = '';
+  let lastCat = null;
+
+  filtered.forEach(item => {
+    if (item.cat !== lastCat) {
+      html += `<tr class="section-header"><td colspan="7">${catIcon(item.cat)}  ${item.cat}</td></tr>`;
+      lastCat = item.cat;
+    }
+
+    const isML = item.u === 'm/l';
+    const isUN = item.u === 'UN';
+    const dec = (isML || isUN) ? 4 : 2;
+    const cur_c = 'EUR';
+
+    // Lista A
+    const pa = fmtPrice(item.a, 'USD', dec);
+    // Lista B
+    let pb = fmtPrice(item.b, 'USD', dec);
+    if (isML && item.b_m2) pb += `<span class="price-sub">= USD ${item.b_m2.toFixed(2)}/m²</span>`;
+    // Lista C
+    let pc = fmtPrice(item.c, cur_c, dec);
+    if (isML && item.c_m2) pc += `<span class="price-sub">= EUR ${item.c_m2.toFixed(2)}/m²</span>`;
+
+    html += `<tr>
+      <td><span class="cat-label ${catClass(item.cat)}">${item.cat}</span></td>
+      <td>
+        <div class="madera">${item.madera}</div>
+        <div class="perfil">${item.perfil}</div>
+        <div class="linea-tag">${item.linea}</div>
+      </td>
+      <td>${item.medidas} ${unitBadge(item.u)}</td>
+      <td class="largos">${item.largos}</td>
+      <td class="price col-a" style="display:${activeLists.a?'':'none'}">${pa}</td>
+      <td class="price col-b" style="display:${activeLists.b?'':'none'}">${pb}</td>
+      <td class="price col-c" style="display:${activeLists.c?'':'none'}">${pc}</td>
+    </tr>`;
+  });
+
+  if (!html) html = '<tr><td colspan="7" class="no-results">Sin resultados</td></tr>';
+  document.getElementById('tbody').innerHTML = html;
+  document.getElementById('stats').innerHTML = `Mostrando <span>${filtered.length}</span> de <span>${D.length}</span> artículos favoritos`;
+}
+
+render();
 </script>
 </body>
 </html>
