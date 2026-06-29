@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kokkai · Lista de Favoritos</title>
+<title>Kokkai · Lista A — Favoritos</title>
 <style>
   :root {
     --gold: #C9A84C;
@@ -14,18 +14,17 @@
     --text2: #666;
     --ml-color: #7B5EA7;
     --ml-bg: #F3EEF9;
-    --eur-color: #1A6B3A;
-    --eur-bg: #E8F5EE;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
   .header { background: var(--black); padding: 18px 24px; display: flex; align-items: center; gap: 16px; }
   .logo { display: flex; align-items: center; gap: 12px; }
-  .logo-mark { width: 38px; height: 38px; background: var(--gold); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; color: var(--black); }
   .logo-text { color: white; font-size: 20px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
   .logo-sub { color: var(--gold); font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
-  .header-right { margin-left: auto; color: var(--gold); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+  .header-right { margin-left: auto; text-align: right; }
+  .header-lista { color: var(--gold); font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+  .header-desc { color: #888; font-size: 11px; letter-spacing: 1px; margin-top: 2px; }
 
   .controls { padding: 16px 24px 0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   .search-wrap { position: relative; flex: 1; min-width: 200px; }
@@ -36,25 +35,18 @@
   .filter-btn:hover, .filter-btn.active { border-color: var(--gold); background: #FBF5E6; font-weight: 600; }
   .filter-btn.all.active { background: var(--gold); border-color: var(--gold); }
 
-  .list-toggle { padding: 12px 24px 0; display: flex; gap: 8px; flex-wrap: wrap; }
-  .list-btn { padding: 7px 18px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 12px; font-weight: 600; cursor: pointer; background: white; transition: all .2s; }
-  .list-btn.active-a { background: #1A1A1A; border-color: #1A1A1A; color: white; }
-  .list-btn.active-b { background: #2D5A8E; border-color: #2D5A8E; color: white; }
-  .list-btn.active-c { background: var(--eur-color); border-color: var(--eur-color); color: white; }
-  .list-btn:not([class*="active"]):hover { border-color: var(--gold); }
-
   .stats { padding: 10px 24px; font-size: 12px; color: var(--text2); }
   .stats span { color: var(--gold); font-weight: 700; }
 
   .table-wrap { padding: 0 24px 40px; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-top: 12px; min-width: 760px; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); margin-top: 12px; min-width: 560px; }
   thead { background: var(--black); }
-  thead th { color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 12px 14px; text-align: left; white-space: nowrap; }
+  thead th { color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 12px 16px; text-align: left; white-space: nowrap; }
   thead th.price { text-align: right; }
   tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
   tbody tr:last-child { border-bottom: none; }
   tbody tr:hover { background: #FDFBF6; }
-  tbody td { padding: 11px 14px; font-size: 13px; vertical-align: middle; }
+  tbody td { padding: 12px 16px; font-size: 13px; vertical-align: middle; }
 
   .cat-label { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .8px; padding: 2px 7px; border-radius: 4px; text-transform: uppercase; white-space: nowrap; }
   .cat-dec { background: #E8F4E8; color: #2D7A2D; }
@@ -70,10 +62,9 @@
   .tag-lf { background: #FFF3CD; color: #7A5800; border: 1px solid #F0D060; }
   .tag-em { background: #E8F4E8; color: #1A6B1A; border: 1px solid #90D090; }
 
-  td.price { text-align: right; font-weight: 600; font-size: 14px; white-space: nowrap; vertical-align: top; padding-top: 14px; }
-  .price-val { display: block; }
-  .price-unit { display: block; font-size: 10px; font-weight: 400; color: #aaa; margin-top: 2px; }
-  .price-eur { color: var(--eur-color); }
+  td.price { text-align: right; vertical-align: middle; }
+  .price-val { font-size: 17px; font-weight: 700; color: var(--text); }
+  .price-unit { font-size: 11px; color: var(--text2); margin-top: 2px; }
 
   .unit-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
   .unit-m2 { background: #E8F4E8; color: #2D7A2D; }
@@ -82,9 +73,9 @@
 
   .largos { font-size: 12px; color: var(--text2); white-space: nowrap; }
   .no-results { text-align: center; padding: 60px 20px; color: var(--text2); }
-  .section-header td { font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #999; padding: 7px 14px !important; background: #F5F0E8; }
+  .section-header td { font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; color: #999; padding: 7px 16px !important; background: #F5F0E8; }
 
-  .legend { padding: 10px 24px 4px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text2); border-top: 1px solid var(--border); margin-top: 12px; }
+  .legend { padding: 10px 24px 4px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text2); }
   .legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
 </style>
 </head>
@@ -98,7 +89,10 @@
       <div class="logo-sub">Wood Products</div>
     </div>
   </div>
-  <div class="header-right">⭐ Lista de Favoritos</div>
+  <div class="header-right">
+    <div class="header-lista">⭐ Lista A — Favoritos</div>
+    <div class="header-desc">Precios B2C · USD</div>
+  </div>
 </div>
 
 <div class="controls">
@@ -112,19 +106,11 @@
   <button class="filter-btn" onclick="setFilter('Accesorios',this)">🔧 Accesorios</button>
 </div>
 
-<div class="list-toggle">
-  <button class="list-btn active-a" id="btn-a" onclick="toggleList('a')">Lista A — B2C · USD</button>
-  <button class="list-btn active-b" id="btn-b" onclick="toggleList('b')">Lista B — B2B Nac. · USD</button>
-  <button class="list-btn active-c" id="btn-c" onclick="toggleList('c')">Lista C — B2B CIF · EUR/m/l</button>
-</div>
-
 <div class="legend">
-  <span style="font-weight:600;color:#555;">Unidades A &amp; B:</span>
+  <span style="font-weight:600;color:#555;">Unidades:</span>
   <span><span class="legend-dot" style="background:#2D7A2D;"></span>m²</span>
-  <span><span class="legend-dot" style="background:var(--ml-color);"></span>m/l</span>
+  <span><span class="legend-dot" style="background:var(--ml-color);"></span>m/l (metro lineal)</span>
   <span><span class="legend-dot" style="background:#888;"></span>UN</span>
-  <span style="margin-left:8px;font-weight:600;color:#555;">Lista C siempre:</span>
-  <span style="color:var(--eur-color);font-weight:600;">EUR · m/l</span>
   <span style="margin-left:8px;font-weight:600;color:#555;">Sobreprecios:</span>
   <span><span class="tag tag-lf">Largo Fijo incl.</span></span>
   <span><span class="tag tag-em">EndMatch incl.</span></span>
@@ -140,9 +126,7 @@
         <th>Producto</th>
         <th>Medidas</th>
         <th>Largos (mm)</th>
-        <th class="price col-a">Lista A · USD</th>
-        <th class="price col-b">Lista B · USD</th>
-        <th class="price col-c">Lista C · EUR/m/l</th>
+        <th class="price">Precio · USD</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -153,7 +137,6 @@
 const D = [{"cat": "Decking", "madera": "Thermo Ash", "perfil": "D31, D4sg2, D3", "linea": "Hardwood Decking", "medidas": "20X112", "largos": "800-1500", "lf": false, "em": true, "u": "m²", "a": 89.99, "a_cur": "USD", "b": 69.22, "b_cur": "USD", "c": 5.965, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Ash", "perfil": "D31, D4sg2, D4", "linea": "Hardwood Decking", "medidas": "20x132", "largos": "800-1500", "lf": false, "em": true, "u": "m²", "a": 95.3, "a_cur": "USD", "b": 73.31, "b_cur": "USD", "c": 7.4451, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Ash", "perfil": "D31, D4sg2, D4", "linea": "Hardwood Decking", "medidas": "20x132", "largos": "1800-3000", "lf": false, "em": true, "u": "m²", "a": 137.01, "a_cur": "USD", "b": 105.4, "b_cur": "USD", "c": 10.7042, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Ash", "perfil": "D4", "linea": "Hardwood Decking", "medidas": "42x90", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 392.39, "a_cur": "USD", "b": 301.84, "b_cur": "USD", "c": 20.9013, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4, D4sg, D30sg, D4 sgU", "linea": "Softwood Decking", "medidas": "26x140", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 68.59, "a_cur": "USD", "b": 52.76, "b_cur": "USD", "c": 5.5165, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D45J", "linea": "Softwood Decking", "medidas": "26x118", "largos": "3000-4800", "lf": false, "em": true, "u": "m²", "a": 69.69, "a_cur": "USD", "b": 53.61, "b_cur": "USD", "c": 4.7242, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 103.41, "a_cur": "USD", "b": 79.54, "b_cur": "USD", "c": 4.0394, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x90", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 103.99, "a_cur": "USD", "b": 79.99, "b_cur": "USD", "c": 5.3762, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x140", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 104.29, "a_cur": "USD", "b": 80.22, "b_cur": "USD", "c": 8.387, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x42", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 111.42, "a_cur": "USD", "b": 85.7, "b_cur": "USD", "c": 2.6881, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Spruce", "perfil": "D4B sg", "linea": "Softwood Decking", "medidas": "26x160", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 60.02, "a_cur": "USD", "b": 46.17, "b_cur": "USD", "c": 5.5165, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Spruce", "perfil": "D4B sg", "linea": "Softwood Decking", "medidas": "26x140", "largos": "3000-5399", "lf": false, "em": true, "u": "m²", "a": 68.59, "a_cur": "USD", "b": 52.76, "b_cur": "USD", "c": 5.5165, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Spruce", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 100.1, "a_cur": "USD", "b": 77.0, "b_cur": "USD", "c": 3.91, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C7, C7J, C34", "linea": "Hardwood Cladding - Select", "medidas": "20x72", "largos": "3300-3900+", "lf": false, "em": false, "u": "m/l", "a": 11.0996, "a_cur": "USD", "b": 8.5382, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 6.5694, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x115", "largos": "1800-3000", "lf": true, "em": false, "u": "m/l", "a": 16.511, "a_cur": "USD", "b": 12.7008, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 9.7721, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x95", "largos": "1800-3000", "lf": true, "em": false, "u": "m²", "a": 129.08, "a_cur": "USD", "b": 99.3, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 7.2579, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x95", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 133.71, "a_cur": "USD", "b": 102.86, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 7.5181, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C9", "linea": "Hardwood Cladding - Select", "medidas": "20x112", "largos": "1800-3000", "lf": true, "em": false, "u": "m²", "a": 138.59, "a_cur": "USD", "b": 106.61, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 9.1871, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C9", "linea": "Hardwood Cladding - Select", "medidas": "20x112", "largos": "1200-3900+", "lf": true, "em": false, "u": "m²", "a": 140.98, "a_cur": "USD", "b": 108.45, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 9.3452, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x115", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 142.35, "a_cur": "USD", "b": 109.5, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 9.6888, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C9", "linea": "Hardwood Cladding - Select", "medidas": "20x112", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 142.69, "a_cur": "USD", "b": 109.76, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 9.4588, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C7, C7J, C34", "linea": "Hardwood Cladding - Select", "medidas": "20x72", "largos": "1800-3000", "lf": true, "em": false, "u": "m²", "a": 143.6, "a_cur": "USD", "b": 110.46, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 6.1194, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C20, C34, C6", "linea": "Hardwood Cladding - Select", "medidas": "20x132", "largos": "1800-3000", "lf": true, "em": false, "u": "m²", "a": 144.92, "a_cur": "USD", "b": 111.48, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 11.3217, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C20, C34, C6", "linea": "Hardwood Cladding - Select", "medidas": "20x132", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 150.33, "a_cur": "USD", "b": 115.64, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 11.7444, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C72", "linea": "Hardwood Cladding - Select", "medidas": "26x91", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 162.01, "a_cur": "USD", "b": 124.62, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 8.7256, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Clear Pine", "perfil": "C7J — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x65", "largos": "3000-5400", "lf": false, "em": false, "u": "m/l", "a": 8.1328, "a_cur": "USD", "b": 6.256, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 4.0625, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C7J", "linea": "Softwood Cladding", "medidas": "20x65", "largos": "3000-4800", "lf": false, "em": true, "u": "m/l", "a": 3.8036, "a_cur": "USD", "b": 2.9259, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 1.9, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C7J — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x65", "largos": "3000-5400", "lf": false, "em": true, "u": "m/l", "a": 5.6304, "a_cur": "USD", "b": 4.3311, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 2.8125, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C7J — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "26x65", "largos": "3000-5400", "lf": false, "em": true, "u": "m/l", "a": 6.6314, "a_cur": "USD", "b": 5.101, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 3.3125, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "D4", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 7.307, "a_cur": "USD", "b": 5.6208, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 3.65, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x140", "largos": "3000-5700", "lf": false, "em": true, "u": "m/l", "a": 7.6073, "a_cur": "USD", "b": 5.8518, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 3.8, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "D4", "linea": "Softwood Cladding", "medidas": "42x90", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 9.7343, "a_cur": "USD", "b": 7.488, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 4.8625, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x115", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 52.44, "a_cur": "USD", "b": 40.34, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 3.0125, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x90", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 53.38, "a_cur": "USD", "b": 41.07, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 2.4, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x68", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 55.94, "a_cur": "USD", "b": 43.03, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 1.9, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "26x68", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 66.98, "a_cur": "USD", "b": 51.52, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 2.275, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "26x115", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 67.02, "a_cur": "USD", "b": 51.55, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 3.85, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "26x90", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 67.56, "a_cur": "USD", "b": 51.97, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 3.0375, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "20x140", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 67.92, "a_cur": "USD", "b": 52.25, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 4.75, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x115", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 71.81, "a_cur": "USD", "b": 55.24, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 4.125, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x90", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 77.85, "a_cur": "USD", "b": 59.89, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 3.5, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "26x115", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 78.34, "a_cur": "USD", "b": 60.26, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 4.5, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "42x90", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 119.56, "a_cur": "USD", "b": 91.97, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.375, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "42x68", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 125.12, "a_cur": "USD", "b": 96.25, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 4.25, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "C7J", "linea": "Softwood Cladding", "medidas": "20x65", "largos": "2400-4800", "lf": false, "em": false, "u": "m/l", "a": 5.6054, "a_cur": "USD", "b": 4.3118, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 2.8, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "CAR3G", "linea": "Softwood Cladding", "medidas": "20x138", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 84.86, "a_cur": "USD", "b": 65.28, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.85, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x115", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 82.37, "a_cur": "USD", "b": 63.36, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 4.875, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x138", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 82.37, "a_cur": "USD", "b": 63.36, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.85, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 - Kodiak", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 6.7565, "a_cur": "USD", "b": 5.1973, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 3.375, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4J - Benchmark", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 6.7565, "a_cur": "USD", "b": 5.1973, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 3.375, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4J - Kodiak", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 6.7565, "a_cur": "USD", "b": 5.1973, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 3.375, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C7J — Ignite 5 & 7", "linea": "Ignite", "medidas": "20x65", "largos": "3000-5400", "lf": false, "em": false, "u": "m/l", "a": 7.5072, "a_cur": "USD", "b": 5.7748, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 3.75, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C7 — Vivid Black Opaque - 4 Sides", "linea": "Vivid Opaque", "medidas": "20x67", "largos": "3000-5400", "lf": false, "em": false, "u": "m/l", "a": 7.5072, "a_cur": "USD", "b": 5.7748, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 3.75, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "CP3", "linea": "Softwood Cladding", "medidas": "42x42", "largos": "4800", "lf": false, "em": false, "u": "m/l", "a": 7.7574, "a_cur": "USD", "b": 5.9673, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 3.875, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 - Vivid Opaque - 4 Sides", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 12.487, "a_cur": "USD", "b": 9.6054, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 6.2375, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4J - Vivid Opaque - 4 Sides", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 12.487, "a_cur": "USD", "b": 9.6054, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 6.2375, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 — Vivid Silvered - 4 Sides", "linea": "Vivid Silvered", "medidas": "42x68", "largos": "3000-5400", "lf": false, "em": false, "u": "m/l", "a": 12.487, "a_cur": "USD", "b": 9.6054, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 6.2375, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 — Vivid Silvered - 4 Sides", "linea": "Vivid Silvered", "medidas": "42x68", "largos": "3000-5400", "lf": false, "em": true, "u": "m/l", "a": 12.9865, "a_cur": "USD", "b": 9.9896, "b_cur": "USD", "b_is_m2_when_ml": true, "c": 6.487, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C26", "linea": "Softwood Cladding", "medidas": "19x141", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 55.02, "a_cur": "USD", "b": 42.32, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 3.875, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24", "linea": "Softwood Cladding", "medidas": "20x140", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 55.41, "a_cur": "USD", "b": 42.62, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 3.875, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15", "linea": "Softwood Cladding", "medidas": "20x186", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 55.83, "a_cur": "USD", "b": 42.95, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.1875, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24 — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "20x140", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 64.35, "a_cur": "USD", "b": 49.5, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 4.5, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15 — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "20x186", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 64.58, "a_cur": "USD", "b": 49.68, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 6.0, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15 — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x186", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 70.63, "a_cur": "USD", "b": 54.33, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 6.5625, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "CAR10 — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "26x140", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 72.39, "a_cur": "USD", "b": 55.69, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.0625, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C26 — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "19x141", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 72.76, "a_cur": "USD", "b": 55.97, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.125, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24 — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x140", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 73.28, "a_cur": "USD", "b": 56.37, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.125, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4B — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "20x68", "largos": "3000-5400", "lf": false, "em": false, "u": "m²", "a": 77.28, "a_cur": "USD", "b": 59.45, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 2.625, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C54G — Vivid Silvered Shield", "linea": "Vivid Silvered", "medidas": "26x92", "largos": "3000-5400", "lf": false, "em": false, "u": "m²", "a": 78.88, "a_cur": "USD", "b": 60.68, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 3.625, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15 — Ignite 5 & 7", "linea": "Ignite", "medidas": "20x186", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 84.76, "a_cur": "USD", "b": 65.2, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 7.875, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C26 — Ignite 5 & 7", "linea": "Ignite", "medidas": "19x141", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 85.19, "a_cur": "USD", "b": 65.53, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 6.0, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24 — Ignite 5 & 7", "linea": "Ignite", "medidas": "20x140", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 85.8, "a_cur": "USD", "b": 66.0, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 6.0, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce / Pine", "perfil": "C34 Mix&Match — Stripes", "linea": "Stripes", "medidas": "19x140", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 80.43, "a_cur": "USD", "b": 61.87, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.625, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce / Pine", "perfil": "C34 Mix&Match — Stripes", "linea": "Stripes", "medidas": "19x115", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 87.04, "a_cur": "USD", "b": 66.95, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.0, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce / Pine", "perfil": "C34 Mix&Match — Stripes", "linea": "Stripes", "medidas": "19x90", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 90.36, "a_cur": "USD", "b": 69.51, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 4.0625, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce / Pine", "perfil": "CAR10J — Stripes", "linea": "Stripes", "medidas": "25x140", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 92.95, "a_cur": "USD", "b": 71.5, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 6.5, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "B1-1", "linea": "Accesorios", "medidas": "B1-1 clip (para perfiles C6, C9)", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 0.5925, "a_cur": "USD", "b": 0.4558, "b_cur": "USD", "c": 0.3306, "c_cur": "USD", "c_unit": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "PC Clip", "linea": "Accesorios", "medidas": "PC clip + tornillos + 1 broca", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 0.4405, "a_cur": "USD", "b": 0.3388, "b_cur": "USD", "c": 0.2587, "c_cur": "USD", "c_unit": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "T-4", "linea": "Accesorios", "medidas": "T-4 clip metal negro + tornillos (D4sg2 ≤112mm)", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 0.5152, "a_cur": "USD", "b": 0.3963, "b_cur": "USD", "c": 0.2875, "c_cur": "USD", "c_unit": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "JUAN1", "linea": "Accesorios", "medidas": "JuAn® 1.0 con tope (prevención mov. longitudinal)", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 0.5131, "a_cur": "USD", "b": 0.3947, "b_cur": "USD", "c": 0.3019, "c_cur": "USD", "c_unit": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "TUME", "linea": "Accesorios", "medidas": "Thermory® Oil DARK pigmentado 2,5L", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 84.2352, "a_cur": "USD", "b": 64.7963, "b_cur": "USD", "c": 47.0063, "c_cur": "USD", "c_unit": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "NAT", "linea": "Accesorios", "medidas": "Thermory® Oil NATURAL 2,5L", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 90.9328, "a_cur": "USD", "b": 69.9483, "b_cur": "USD", "c": 50.7437, "c_cur": "USD", "c_unit": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "DECK Clean 1L", "linea": "Accesorios", "medidas": "Thermory® Deck Cleaning Agent 1L", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 35.0336, "a_cur": "USD", "b": 26.9489, "b_cur": "USD", "c": 19.55, "c_cur": "USD", "c_unit": "UN"}];
 
 let activeFilter = 'all';
-let activeLists = {a:true, b:true, c:true};
 
 function catClass(c) {
   return {Decking:'cat-dec','Cladding Hardwood':'cat-clh','Cladding Softwood':'cat-cls',Accesorios:'cat-acc'}[c]||'cat-acc';
@@ -167,30 +150,10 @@ function unitBadge(u) {
   return '<span class="unit-badge unit-un">UN</span>';
 }
 
-function priceCell(val, cur, unit, extraNote) {
-  if (val===null||val===undefined) return '<span style="color:#ccc">—</span>';
-  const dec = (unit==='m/l'||unit==='UN') ? 4 : 2;
-  const isEur = cur==='EUR';
-  const valStr = val.toFixed(dec);
-  const curSpan = isEur
-    ? `<span class="price-eur">${cur}</span>`
-    : cur;
-  let html = `<span class="price-val">${curSpan} ${valStr}</span>`;
-  if (unit) html += `<span class="price-unit">${unit}</span>`;
-  if (extraNote) html += `<span class="price-unit">${extraNote}</span>`;
-  return html;
-}
-
 function setFilter(cat, btn) {
   activeFilter = cat;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  render();
-}
-function toggleList(list) {
-  activeLists[list] = !activeLists[list];
-  document.getElementById('btn-'+list).className = activeLists[list] ? 'list-btn active-'+list : 'list-btn';
-  document.querySelectorAll('.col-'+list).forEach(el => el.style.display = activeLists[list] ? '' : 'none');
   render();
 }
 
@@ -210,7 +173,7 @@ function render() {
 
   filtered.forEach(item => {
     if (item.cat !== lastCat) {
-      html += `<tr class="section-header"><td colspan="7">${catIcon(item.cat)}  ${item.cat}</td></tr>`;
+      html += `<tr class="section-header"><td colspan="5">${catIcon(item.cat)}  ${item.cat}</td></tr>`;
       lastCat = item.cat;
     }
 
@@ -218,19 +181,8 @@ function render() {
       ? `<div class="tags">${item.lf?'<span class="tag tag-lf">Largo Fijo incl.</span>':''}${item.em?'<span class="tag tag-em">EndMatch incl.</span>':''}</div>`
       : '';
 
-    // Lista A — misma unidad que el item
-    const pa = priceCell(item.a, item.a_cur, item.u);
-
-    // Lista B — para items m/l de HW/SW, el precio B en el sheet es m²; lo aclaramos
-    let pb;
-    if (item.b_is_m2_when_ml && item.u === 'm/l') {
-      pb = priceCell(item.b, item.b_cur, 'm²', '(precio por m²)');
-    } else {
-      pb = priceCell(item.b, item.b_cur, item.u);
-    }
-
-    // Lista C — siempre m/l EUR (excepto Accesorios: UN USD)
-    const pc = priceCell(item.c, item.c_cur, item.c_unit);
+    const dec = (item.u==='m/l'||item.u==='UN') ? 4 : 2;
+    const priceStr = item.a !== null && item.a !== undefined ? item.a.toFixed(dec) : '—';
 
     html += `<tr>
       <td><span class="cat-label ${catClass(item.cat)}">${item.cat}</span></td>
@@ -242,13 +194,14 @@ function render() {
       </td>
       <td>${item.medidas} ${unitBadge(item.u)}</td>
       <td class="largos">${item.largos}</td>
-      <td class="price col-a" style="display:${activeLists.a?'':'none'}">${pa}</td>
-      <td class="price col-b" style="display:${activeLists.b?'':'none'}">${pb}</td>
-      <td class="price col-c" style="display:${activeLists.c?'':'none'}">${pc}</td>
+      <td class="price">
+        <div class="price-val">USD ${priceStr}</div>
+        <div class="price-unit">${item.u}</div>
+      </td>
     </tr>`;
   });
 
-  if (!html) html = '<tr><td colspan="7" class="no-results">Sin resultados</td></tr>';
+  if (!html) html = '<tr><td colspan="5" class="no-results">Sin resultados</td></tr>';
   document.getElementById('tbody').innerHTML = html;
   document.getElementById('stats').innerHTML = `Mostrando <span>${filtered.length}</span> de <span>${D.length}</span> artículos favoritos`;
 }
