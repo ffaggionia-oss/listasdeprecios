@@ -206,7 +206,11 @@
         </div>
         <div>
           <label>Tipo de cambio ARS (opcional — agrega TOTAL PESOS al PDF)</label>
-          <input type="number" id="inTC" min="0" step="0.01" style="width:160px" placeholder="Ej: 1510">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <input type="number" id="inTC" min="0" step="0.01" style="width:130px" placeholder="Ej: 1510">
+            <button class="btn btn-ghost" onclick="traerTC()">↻ Oficial BNA</button>
+            <span class="status-msg" id="tcMsg" style="margin:0;"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -294,6 +298,7 @@
         <div><label>Teléfono</label><input type="text" id="cTel" style="width:100%"></div>
         <div><label>Dirección</label><input type="text" id="cDir" style="width:100%"></div>
         <div><label>Localidad</label><input type="text" id="cLoc" style="width:100%"></div>
+        <div><label>Provincia</label><input type="text" id="cProv" style="width:100%"></div>
         <div><label>Condición IVA</label>
           <select id="cCondIva" style="width:100%">
             <option value="">—</option>
@@ -378,6 +383,7 @@ async function iniciarApp() {
   document.getElementById('viewLogin').classList.add('hidden');
   document.getElementById('viewApp').classList.remove('hidden');
   document.getElementById('userName').textContent = currentUser.usuario;
+  traerTC(true);
   renderProdList();
   restaurarBorradorLocal();
   renderCart();
@@ -550,6 +556,7 @@ async function guardarCot() {
       id: cot.id, estado: cot.estado,
       clienteId: cliente.id, clienteNombre: cliente.razonSocial,
       items: cot.items.map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, cant:it.cant, conClip:it.conClip})),
+      vendedor: cot.vendedor || currentUser.usuario,
       descPct: cot.descPct, comisionArq: cot.comisionArq, notas: cot.notas,
       condPago: cot.condPago, validez: cot.validez, lugarEnt: cot.lugarEnt,
       plazoEnt: cot.plazoEnt, transEnt: cot.transEnt, ivaPct: cot.ivaPct, tc: cot.tc
@@ -611,6 +618,7 @@ async function abrirCot(id, duplicar) {
   cot.descPct = c.descPct;
   cot.comisionArq = c.comisionArq;
   cot.clienteId = c.clienteId;
+  cot.vendedor = c.vendedor;
   cot.items = c.items.map(it => {
     // re-vincular al producto actual por descripción+medidas para tomar precio vigente al duplicar
     let idx = D.findIndex(p => (p.madera+' '+p.perfil)===it.desc && p.medidas===it.medidas);
@@ -668,7 +676,7 @@ let cliEditId = null;
 function abrirNuevoCliente() { showTab('clientes'); limpiarCliForm(); document.getElementById('cCuit').focus(); }
 function limpiarCliForm() {
   cliEditId = null;
-  ['cCuit','cRazon','cContacto','cEmail','cTel','cDir','cLoc','cCondIva'].forEach(id=>document.getElementById(id).value='');
+  ['cCuit','cRazon','cContacto','cEmail','cTel','cDir','cLoc','cProv','cCondIva'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cliFormTitle').textContent = 'Nuevo cliente';
   document.getElementById('cliMsg').textContent = '';
 }
@@ -682,6 +690,7 @@ function editarCliente(id) {
   document.getElementById('cTel').value = c.telefono;
   document.getElementById('cDir').value = c.direccion;
   document.getElementById('cLoc').value = c.localidad;
+  document.getElementById('cProv').value = c.provincia || '';
   document.getElementById('cCondIva').value = c.condIva || '';
   document.getElementById('cliFormTitle').textContent = 'Editando cliente';
   showTab('clientes');
@@ -701,6 +710,7 @@ async function guardarCliente() {
     telefono: document.getElementById('cTel').value.trim(),
     direccion: document.getElementById('cDir').value.trim(),
     localidad: document.getElementById('cLoc').value.trim(),
+    provincia: document.getElementById('cProv').value.trim(),
     condIva: document.getElementById('cCondIva').value
   };
   try {
@@ -769,6 +779,34 @@ function aprenderOpciones() {
     if (!extra.includes(v)) { extra.push(v); localStorage.setItem('kk_opts_'+f, JSON.stringify(extra)); }
   });
   cargarOpciones();
+}
+
+// Tipo de cambio: dólar oficial VENTA (sigue la pizarra billete del BNA)
+async function traerTC(silent) {
+  const inp = document.getElementById('inTC');
+  const msg = document.getElementById('tcMsg');
+  if (silent === true && inp.value) return; // no pisar un valor cargado a mano
+  if (silent !== true) { msg.className='status-msg'; msg.textContent = 'Consultando…'; }
+  try {
+    const r = await fetch('https://dolarapi.com/v1/dolares/oficial');
+    const d = await r.json();
+    if (d && d.venta) return aplicarTC(d.venta, d.fechaActualizacion);
+  } catch(e) {}
+  try {
+    const r = await fetch('https://api.bluelytics.com.ar/v2/latest');
+    const d = await r.json();
+    if (d && d.oficial && d.oficial.value_sell) return aplicarTC(d.oficial.value_sell, d.last_update);
+  } catch(e) {}
+  msg.className='status-msg err';
+  msg.textContent = 'No se pudo traer la cotización — cargala a mano.';
+}
+function aplicarTC(v, fecha) {
+  document.getElementById('inTC').value = Number(v).toFixed(2);
+  const msg = document.getElementById('tcMsg');
+  msg.className = 'status-msg';
+  msg.textContent = '✓ Oficial venta $ ' + Number(v).toLocaleString('es-AR', {minimumFractionDigits:2}) +
+    (fecha ? ' — ' + new Date(fecha).toLocaleDateString('es-AR') : '');
+  guardarBorradorLocal();
 }
 
 function fmtAR(v, dec) {
@@ -841,6 +879,7 @@ function buildPrint(c, clienteObj) {
         ${field('CUIT', cli.cuit)}
         ${field('Domicilio', cli.direccion)}
         ${field('Localidad', cli.localidad)}
+        ${field('Provincia', cli.provincia)}
         ${field('Correo electrónico', cli.email)}
         ${field('Teléfono', cli.telefono)}
         ${field('Contacto', cli.contacto)}
@@ -851,7 +890,7 @@ function buildPrint(c, clienteObj) {
     <div class="pr-sec">
       <div class="pr-sec-t">Condiciones</div>
       <div class="pr-grid3">
-        ${field('Vendedor', currentUser ? currentUser.usuario : '')}
+        ${field('Vendedor', c.vendedor || (currentUser ? currentUser.usuario : ''))}
         ${field('Condición de pago', condPago)}
         ${field('Vencimiento', vto + ' (' + validez + ' días)')}
         ${field('Lugar de entrega', lugarEnt)}
@@ -888,7 +927,7 @@ function buildPrint(c, clienteObj) {
       </div>
     </div>
 
-    ${c.notas ? '<div class="pr-obs"><b>Observaciones</b>'+c.notas+'</div>' : ''}
+    <div class="pr-obs"><b>Observaciones</b>${c.notas || '—'}</div>
 
     <div class="pr-cond">
       Por favor revise nuestros Términos y Condiciones de Compra y Límites de Garantía en el siguiente enlace:
@@ -901,7 +940,7 @@ function imprimirPdf() {
   guardarBorradorLocal();
   aprenderOpciones();
   const cli = CLIENTES.find(c=>c.id===document.getElementById('selCliente').value);
-  buildPrint({ id:cot.id, items:cot.items, descPct:cot.descPct, notas:cot.notas,
+  buildPrint({ id:cot.id, items:cot.items, descPct:cot.descPct, notas:cot.notas, vendedor:cot.vendedor,
     condPago:cot.condPago, validez:cot.validez, lugarEnt:cot.lugarEnt,
     plazoEnt:cot.plazoEnt, transEnt:cot.transEnt, ivaPct:cot.ivaPct, tc:cot.tc }, cli);
   window.print();
