@@ -621,45 +621,27 @@ async function guardarCliente() {
   } catch(e) { msg.className='status-msg err'; msg.textContent='Error de conexión'; }
 }
 
-// CUIT → ARCA (con reintentos y fallback, mismo criterio que la app de precios)
+// CUIT → ARCA vía el backend propio (Apps Script), sin bloqueos de CORS
 async function buscarCuit() {
   const msg = document.getElementById('cliMsg');
   const cuit = document.getElementById('cCuit').value.replace(/\D/g,'');
   if (cuit.length !== 11) { msg.className='status-msg err'; msg.textContent='CUIT inválido (11 dígitos).'; return; }
   msg.className='status-msg'; msg.textContent='Consultando ARCA…';
-  for (let intento=0; intento<3; intento++) {
-    try {
-      const res = await fetch('https://soa.afip.gob.ar/sr-padron/v2/persona/' + cuit);
-      const d = await res.json();
-      if (d.success && d.data) {
-        const p = d.data;
-        document.getElementById('cRazon').value = p.nombre || ((p.apellido||'')+' '+(p.nombre||'')).trim();
-        if (p.domicilioFiscal) {
-          document.getElementById('cDir').value = p.domicilioFiscal.direccion || '';
-          document.getElementById('cLoc').value = (p.domicilioFiscal.localidad || '') + (p.domicilioFiscal.descripcionProvincia ? ', '+p.domicilioFiscal.descripcionProvincia : '');
-        }
-        msg.textContent = '✓ Datos traídos de ARCA';
-        return;
-      }
-    } catch(e) { /* reintenta */ }
-    await new Promise(r=>setTimeout(r, 600));
-  }
-  // Fallback
   try {
-    const res = await fetch('https://afip.tangofactura.com/Rest/GetContribuyenteFull?cuit=' + cuit);
-    const d = await res.json();
-    if (d && d.Contribuyente) {
-      document.getElementById('cRazon').value = d.Contribuyente.nombre || '';
-      if (d.Contribuyente.domicilioFiscal) {
-        document.getElementById('cDir').value = d.Contribuyente.domicilioFiscal.direccion || '';
-        document.getElementById('cLoc').value = d.Contribuyente.domicilioFiscal.localidad || '';
-      }
-      msg.textContent = '✓ Datos traídos (fuente alternativa)';
+    const r = await API.get({ action:'cuit', cuit, token: currentUser.token });
+    if (r.ok) {
+      if (r.razonSocial) document.getElementById('cRazon').value = r.razonSocial;
+      if (r.direccion) document.getElementById('cDir').value = r.direccion;
+      if (r.localidad) document.getElementById('cLoc').value = r.localidad;
+      msg.textContent = '✓ Datos traídos de ARCA';
       return;
     }
-  } catch(e) {}
-  msg.className='status-msg err';
-  msg.textContent = 'ARCA no respondió — cargá los datos a mano.';
+    msg.className='status-msg err';
+    msg.textContent = 'ARCA no respondió — cargá los datos a mano.';
+  } catch(e) {
+    msg.className='status-msg err';
+    msg.textContent = 'Error de conexión — cargá los datos a mano.';
+  }
 }
 
 // ---------- PDF (impresión) — SIN comisión arquitecto ----------
