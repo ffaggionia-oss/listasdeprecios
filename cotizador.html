@@ -72,7 +72,19 @@
   .e-Enviada { background:#DCE9F7; color:#2b6cb0; }
   .e-Aprobada { background:#DFF2E1; color:#2D9E4F; }
   .e-Perdida { background:#F7DEDE; color:#b33; }
+  .e-Negociación { background:#EBE3F7; color:#6b46c1; }
+  .e-Stand-by { background:#E8ECEF; color:#5a6b7a; }
+  .e-Reemplazada { background:#eee; color:#999; }
+  .cot-row.reemplazada { opacity:.55; }
+  .ver-tag { font-size:10px; color:#2b6cb0; font-weight:700; }
+  .com-panel { background:#FBF7EE; border:1px solid #e5ddcf; border-radius:8px; padding:10px 12px; margin:0 0 10px; }
+  .com-item { padding:6px 0; border-bottom:1px dashed #e0d8c6; font-size:13px; }
+  .com-item:last-child { border-bottom:none; }
+  .com-meta { font-size:10px; color:#999; display:block; }
   .flag-arq { font-size:10px; color:#C9A227; font-weight:700; }
+  .seg-badge { background:#b33; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; }
+  .seg-ok { color:#aaa; font-size:10px; }
+  .seg-banner { background:#FDECEC; border:1px solid #e0b8b8; color:#8a2b2b; padding:10px 12px; border-radius:8px; margin-bottom:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:13px; }
 
   .row-actions { display:flex; gap:6px; flex-wrap:wrap; }
   .row-actions .btn { padding:5px 10px; font-size:12px; }
@@ -169,6 +181,16 @@
           </div>
         </div>
         <div>
+          <label>Vendedor · % comisión <span style="color:#C9A227;font-weight:700">(interno, no va al PDF)</span></label>
+          <div style="display:flex;gap:6px;">
+            <select id="inVend" style="flex:1" onchange="vendCambiado()">
+              <option>Franco Faggioni</option>
+              <option>Christian Holler</option>
+            </select>
+            <input type="number" id="inComVend" min="0" max="100" step="0.5" value="0" style="width:80px" oninput="renderCart()"> %
+          </div>
+        </div>
+        <div>
           <label>Notas / observaciones (van al PDF)</label>
           <input type="text" id="inNotas" style="width:100%" placeholder="Ej: entrega en obra, plazo 30 días…">
         </div>
@@ -244,6 +266,7 @@
           <div class="interno" id="boxInterno">
             <div class="interno-title">Solo interno — no va al cliente</div>
             <div class="tot-line"><span>Comisión arquitecto (5%)</span><span id="iComArq">—</span></div>
+            <div class="tot-line"><span>Comisión vendedor (<span id="iComVendPct">0</span>%)</span><span id="iComVend">—</span></div>
             <div class="tot-line"><span>Neto Kokkai</span><span id="iNeto">—</span></div>
           </div>
         </div>
@@ -268,12 +291,20 @@
   <div id="pane-lista" class="hidden">
     <div class="card">
       <h3>Cotizaciones guardadas</h3>
-      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <div id="segBanner"></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
         <input type="text" id="cotSearch" placeholder="Buscar por cliente o número…" oninput="renderCotList()" style="flex:1;min-width:180px;">
         <select id="cotEstadoFilter" onchange="renderCotList()">
           <option value="">Todos los estados</option>
-          <option>Borrador</option><option>Enviada</option><option>Aprobada</option><option>Perdida</option>
+          <option>Borrador</option><option>Enviada</option><option>Negociación</option><option>Stand-by</option><option>Aprobada</option><option>Perdida</option><option>Reemplazada</option>
         </select>
+        <select id="cotVendFilter" onchange="renderCotList()">
+          <option value="">Todos los vendedores</option>
+          <option>Franco Faggioni</option><option>Christian Holler</option>
+        </select>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="cotSoloSeg" onchange="renderCotList()" style="width:auto"> ⏰ +10 días
+        </label>
         <button class="btn btn-ghost" onclick="cargarCots()">↻ Actualizar</button>
       </div>
       <div id="cotList"><div style="color:#aaa;padding:14px;">Cargando…</div></div>
@@ -384,6 +415,11 @@ async function iniciarApp() {
   document.getElementById('viewApp').classList.remove('hidden');
   document.getElementById('userName').textContent = currentUser.usuario;
   traerTC(true);
+  if (!localStorage.getItem('kk_cot_draft')) {
+    const vd0 = currentUser.usuario === 'Franco' ? 'Franco Faggioni' : 'Christian Holler';
+    document.getElementById('inVend').value = vd0;
+    document.getElementById('inComVend').value = defaultComVend(vd0);
+  }
   renderProdList();
   restaurarBorradorLocal();
   renderCart();
@@ -453,7 +489,9 @@ function totales() {
   const total = sub - desc;
   const arq = document.getElementById('inArq').checked;
   const com = arq ? total*0.05 : 0;
-  return { sub, pct, desc, total, arq, com, neto: total-com };
+  const comVendPct = Math.min(Math.max(parseFloat(document.getElementById('inComVend').value)||0,0),100);
+  const comVend = total*comVendPct/100;
+  return { sub, pct, desc, total, arq, com, comVendPct, comVend, neto: total-com-comVend };
 }
 
 function renderCart(full) {
@@ -484,7 +522,9 @@ function renderCart(full) {
   document.getElementById('lineDesc').style.display = t.pct>0 ? 'flex' : 'none';
   document.getElementById('tTotal').textContent = 'USD ' + fmt(t.total);
   document.getElementById('iComArq').textContent = t.arq ? '— USD ' + fmt(t.com) : '—';
-  document.getElementById('iNeto').textContent = t.arq ? 'USD ' + fmt(t.neto) : 'USD ' + fmt(t.total);
+  document.getElementById('iComVendPct').textContent = t.comVendPct;
+  document.getElementById('iComVend').textContent = t.comVend>0 ? '— USD ' + fmt(t.comVend) : '—';
+  document.getElementById('iNeto').textContent = 'USD ' + fmt(t.neto);
   guardarBorradorLocal();
 }
 
@@ -493,6 +533,8 @@ function guardarBorradorLocal() {
   cot.descPct = parseFloat(document.getElementById('inDesc').value)||0;
   cot.comisionArq = document.getElementById('inArq').checked;
   cot.notas = document.getElementById('inNotas').value;
+  cot.vendedor = document.getElementById('inVend').value;
+  cot.comVendPct = parseFloat(document.getElementById('inComVend').value)||0;
   cot.condPago = document.getElementById('inCondPago').value;
   cot.validez = parseInt(document.getElementById('inValidez').value)||7;
   cot.lugarEnt = document.getElementById('inLugarEnt').value;
@@ -511,10 +553,18 @@ function restaurarBorradorLocal() {
       document.getElementById('inDesc').value = cot.descPct||0;
       document.getElementById('inArq').checked = !!cot.comisionArq;
       document.getElementById('inNotas').value = cot.notas||'';
+      document.getElementById('inVend').value = cot.vendedor || 'Franco Faggioni';
+      document.getElementById('inComVend').value = (cot.comVendPct!==undefined && cot.comVendPct!==null && cot.comVendPct!=='') ? cot.comVendPct : defaultComVend(document.getElementById('inVend').value);
       setPdfFields(cot);
       document.getElementById('cotTitle').textContent = cot.id ? ('Editando ' + cot.id) : 'Nueva cotización (borrador recuperado)';
     }
   } catch(e){}
+}
+
+function defaultComVend(v) { return v === 'Christian Holler' ? 5 : 0; }
+function vendCambiado() {
+  document.getElementById('inComVend').value = defaultComVend(document.getElementById('inVend').value);
+  renderCart();
 }
 
 function setPdfFields(c) {
@@ -532,6 +582,9 @@ function nuevaCot() {
   document.getElementById('inDesc').value = 0;
   document.getElementById('inArq').checked = false;
   document.getElementById('inNotas').value = '';
+  const vd = (currentUser && currentUser.usuario === 'Franco') ? 'Franco Faggioni' : 'Christian Holler';
+  document.getElementById('inVend').value = vd;
+  document.getElementById('inComVend').value = defaultComVend(vd);
   setPdfFields({});
   document.getElementById('selCliente').value = '';
   document.getElementById('cotTitle').textContent = 'Nueva cotización';
@@ -556,7 +609,9 @@ async function guardarCot() {
       id: cot.id, estado: cot.estado,
       clienteId: cliente.id, clienteNombre: cliente.razonSocial,
       items: cot.items.map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, cant:it.cant, conClip:it.conClip})),
-      vendedor: cot.vendedor || currentUser.usuario,
+      vendedor: cot.vendedor || document.getElementById('inVend').value,
+      comVendPct: cot.comVendPct || 0,
+      padreId: cot.padreId || '',
       descPct: cot.descPct, comisionArq: cot.comisionArq, notas: cot.notas,
       condPago: cot.condPago, validez: cot.validez, lugarEnt: cot.lugarEnt,
       plazoEnt: cot.plazoEnt, transEnt: cot.transEnt, ivaPct: cot.ivaPct, tc: cot.tc
@@ -580,31 +635,123 @@ async function cargarCots() {
   } catch(e){ document.getElementById('cotList').innerHTML = '<div style="color:#b33;padding:14px;">Error de conexión</div>'; }
 }
 
+const ESTADOS = ['Borrador','Enviada','Negociación','Stand-by','Aprobada','Perdida'];
+const ESTADOS_FRIOS = ['Borrador','Enviada','Negociación']; // recuerdan a los 10 días
+const ESTADOS_TERMINALES = ['Aprobada','Perdida','Reemplazada'];
+
+function parseFechaAR_(s) {
+  if (!s) return null;
+  const m = String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+}
+function diasSinMov_(c) {
+  const d = parseFechaAR_(c.actualizado) || parseFechaAR_(c.fecha);
+  return d ? Math.floor((Date.now() - d.getTime()) / 86400000) : 0;
+}
+// Borrador/Enviada/Negociación recuerdan a los 10 días.
+// Stand-by (pausada a propósito), Aprobada, Perdida y Reemplazada, no.
+function necesitaSeguimiento_(c) {
+  return ESTADOS_FRIOS.includes(c.estado) && diasSinMov_(c) >= 10;
+}
+async function registrarSeguimiento(id) {
+  const c = COTS.find(x=>x.id===id); if (!c) return;
+  const r = await API.post({ action:'updateEstado', id, estado: c.estado, token: currentUser.token });
+  if (!r.ok) return alert('Error: ' + r.error);
+  cargarCots();
+}
+
+// --- Nueva versión: misma operación con el cliente, presupuesto nuevo.
+// La anterior queda guardada como "Reemplazada" (se puede reabrir o imprimir).
+async function nuevaVersion(id) {
+  await abrirCot(id, true); // duplica con precios vigentes
+  cot.padreId = id;
+  document.getElementById('cotTitle').textContent = '⑂ Nueva versión de ' + id;
+  document.getElementById('cotMsg').textContent = 'Misma operación, presupuesto nuevo: al guardar toma número propio y ' + id + ' pasa a "Reemplazada" (queda guardada por si hay que volver).';
+}
+
+// --- Comentarios / bitácora de la operación ---
+async function toggleComentarios(id) {
+  const p = document.getElementById('com-' + id);
+  if (!p) return;
+  if (!p.classList.contains('hidden')) { p.classList.add('hidden'); return; }
+  p.classList.remove('hidden');
+  p.innerHTML = '<div style="color:#aaa;font-size:12px;">Cargando…</div>';
+  try {
+    const r = await API.get({ action:'comentarios', id, token: currentUser.token });
+    const coms = (r.ok && r.comentarios) ? r.comentarios : [];
+    p.innerHTML = `
+      <div>${coms.map(c=>`<div class="com-item"><span class="com-meta">${c.fecha} — <b>${c.usuario}</b></span>${c.texto}</div>`).join('') || '<div style="color:#aaa;font-size:12px;">Sin comentarios todavía.</div>'}</div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <input type="text" id="comTxt-${id}" placeholder="Ej: pidió 3% extra, confirma la semana que viene…" style="flex:1" onkeydown="if(event.key==='Enter')agregarComentario('${id}')">
+        <button class="btn btn-gold" onclick="agregarComentario('${id}')">Agregar</button>
+      </div>`;
+  } catch(e) {
+    p.innerHTML = '<div style="color:#b33;font-size:12px;">Error de conexión.</div>';
+  }
+}
+async function agregarComentario(id) {
+  const inp = document.getElementById('comTxt-' + id);
+  const texto = (inp.value||'').trim(); if (!texto) return;
+  inp.disabled = true;
+  try {
+    const r = await API.post({ action:'addComentario', id, texto, token: currentUser.token });
+    if (!r.ok) { alert('Error: ' + r.error); inp.disabled = false; return; }
+    await cargarCots();               // refresca contador 💬 y reinicia el reloj de 10 días
+    toggleComentarios(id);            // reabre el panel con el comentario nuevo
+  } catch(e) { alert('Error de conexión'); inp.disabled = false; }
+}
+
 function renderCotList() {
   const q = (document.getElementById('cotSearch').value||'').toLowerCase();
   const est = document.getElementById('cotEstadoFilter').value;
+  const vend = document.getElementById('cotVendFilter').value;
+  const soloSeg = document.getElementById('cotSoloSeg').checked;
   const el = document.getElementById('cotList');
+
+  const pend = COTS.filter(necesitaSeguimiento_);
+  document.getElementById('tab-lista').textContent = '📋 Guardadas' + (pend.length ? ' · ⏰' + pend.length : '');
+  document.getElementById('segBanner').innerHTML = pend.length
+    ? `<div class="seg-banner">⏰ <b>${pend.length}</b> cotizaci${pend.length>1?'ones':'ón'} sin movimiento hace 10+ días
+       <button class="btn btn-dark" style="padding:4px 10px;font-size:11px;" onclick="document.getElementById('cotSoloSeg').checked=true;renderCotList()">Ver pendientes</button></div>`
+    : '';
+
   let list = COTS;
   if (est) list = list.filter(c=>c.estado===est);
+  if (vend) list = list.filter(c=>c.vendedor===vend);
+  if (soloSeg) list = list.filter(necesitaSeguimiento_);
   if (q) list = list.filter(c=>(c.id+' '+c.clienteNombre).toLowerCase().includes(q));
-  el.innerHTML = list.map(c => `
-    <div class="cot-row">
+
+  el.innerHTML = list.map(c => {
+    const dias = diasSinMov_(c);
+    const seg = necesitaSeguimiento_(c);
+    const terminal = ESTADOS_TERMINALES.includes(c.estado);
+    const esReemp = c.estado === 'Reemplazada';
+    return `
+    <div class="cot-row${esReemp?' reemplazada':''}">
       <div style="flex:1;min-width:200px;">
         <span class="c-id">${c.id}</span> — ${c.clienteNombre||'<i>sin cliente</i>'}
+        ${c.padreId?'<span class="ver-tag">⑂ v. de '+c.padreId+'</span>':''}
         ${c.comisionArq?'<span class="flag-arq">◆ arq.</span>':''}
-        <div class="c-sub">${c.fecha} · ${c.resumen}</div>
+        ${seg ? '<span class="seg-badge">⏰ '+dias+' días sin movimiento</span>' : (terminal ? '' : '<span class="seg-ok">hace '+dias+' d</span>')}
+        <div class="c-sub">${c.fecha} · ${c.vendedor ? c.vendedor+' · ' : ''}${c.resumen}</div>
       </div>
       <div style="font-weight:800;white-space:nowrap;">USD ${Number(c.total).toFixed(2)}</div>
-      <select onchange="cambiarEstado('${c.id}',this.value)" style="font-size:12px;padding:4px;">
-        ${['Borrador','Enviada','Aprobada','Perdida'].map(e=>`<option ${e===c.estado?'selected':''}>${e}</option>`).join('')}
-      </select>
+      ${esReemp
+        ? '<span class="estado e-Reemplazada">Reemplazada</span>'
+        : `<select onchange="cambiarEstado('${c.id}',this.value)" style="font-size:12px;padding:4px;">${ESTADOS.map(e=>`<option ${e===c.estado?'selected':''}>${e}</option>`).join('')}</select>`}
       <div class="row-actions">
+        <button class="btn btn-ghost" title="Comentarios / bitácora" onclick="toggleComentarios('${c.id}')">💬 ${c.nComentarios||0}</button>
+        ${terminal ? '' : `<button class="btn btn-ghost" title="Reinicia el contador de 10 días sin cambiar el estado" onclick="registrarSeguimiento('${c.id}')">✓ Seguida</button>`}
+        ${esReemp ? '' : `<button class="btn btn-ghost" title="Presupuesto nuevo para la misma operación" onclick="nuevaVersion('${c.id}')">⑂ Versión</button>`}
         <button class="btn btn-ghost" onclick="abrirCot('${c.id}')">Abrir</button>
         <button class="btn btn-ghost" onclick="abrirCot('${c.id}', true)">Duplicar</button>
         <button class="btn btn-dark" onclick="pdfDesdeLista('${c.id}')">PDF</button>
         <button class="btn btn-danger" onclick="eliminarCot('${c.id}')">✕</button>
       </div>
-    </div>`).join('') || '<div style="color:#aaa;padding:14px;">No hay cotizaciones.</div>';
+    </div>
+    <div class="com-panel hidden" id="com-${c.id}"></div>`;
+  }).join('') || '<div style="color:#aaa;padding:14px;">No hay cotizaciones con esos filtros.</div>';
 }
 
 async function abrirCot(id, duplicar) {
@@ -619,6 +766,7 @@ async function abrirCot(id, duplicar) {
   cot.comisionArq = c.comisionArq;
   cot.clienteId = c.clienteId;
   cot.vendedor = c.vendedor;
+  cot.padreId = duplicar ? '' : (c.padreId || '');
   cot.items = c.items.map(it => {
     // re-vincular al producto actual por descripción+medidas para tomar precio vigente al duplicar
     let idx = D.findIndex(p => (p.madera+' '+p.perfil)===it.desc && p.medidas===it.medidas);
@@ -630,6 +778,9 @@ async function abrirCot(id, duplicar) {
   document.getElementById('inNotas').value = cot.notas||'';
   cot.condPago = c.condPago; cot.validez = c.validez; cot.lugarEnt = c.lugarEnt;
   cot.plazoEnt = c.plazoEnt; cot.transEnt = c.transEnt; cot.ivaPct = c.ivaPct; cot.tc = c.tc;
+  cot.comVendPct = c.comVendPct;
+  document.getElementById('inVend').value = c.vendedor || ((currentUser && currentUser.usuario==='Franco') ? 'Franco Faggioni' : 'Christian Holler');
+  document.getElementById('inComVend').value = (c.comVendPct!==undefined && c.comVendPct!==null && c.comVendPct!=='') ? c.comVendPct : defaultComVend(document.getElementById('inVend').value);
   setPdfFields(cot);
   document.getElementById('selCliente').value = cot.clienteId||'';
   document.getElementById('cotTitle').textContent = duplicar ? ('Nueva cotización (duplicada de '+c.id+')') : ('Editando ' + c.id);
@@ -723,27 +874,62 @@ async function guardarCliente() {
   } catch(e) { msg.className='status-msg err'; msg.textContent='Error de conexión'; }
 }
 
-// CUIT → ARCA vía el backend propio (Apps Script), sin bloqueos de CORS
+// CUIT → ARCA: 1) backend Apps Script, 2) AFIP directo con reintentos, 3) fuente alternativa
+function pintarCliente(razon, dir, loc, prov) {
+  if (razon) document.getElementById('cRazon').value = razon;
+  if (dir) document.getElementById('cDir').value = dir;
+  if (loc) document.getElementById('cLoc').value = loc;
+  if (prov) document.getElementById('cProv').value = prov;
+}
 async function buscarCuit() {
   const msg = document.getElementById('cliMsg');
   const cuit = document.getElementById('cCuit').value.replace(/\D/g,'');
   if (cuit.length !== 11) { msg.className='status-msg err'; msg.textContent='CUIT inválido (11 dígitos).'; return; }
-  msg.className='status-msg'; msg.textContent='Consultando ARCA…';
+  msg.className='status-msg';
+
+  // 1) Backend propio (Apps Script)
+  msg.textContent = 'Consultando ARCA (backend)…';
   try {
     const r = await API.get({ action:'cuit', cuit, token: currentUser.token });
-    if (r.ok) {
-      if (r.razonSocial) document.getElementById('cRazon').value = r.razonSocial;
-      if (r.direccion) document.getElementById('cDir').value = r.direccion;
-      if (r.localidad) document.getElementById('cLoc').value = r.localidad;
+    if (r.ok && (r.razonSocial || r.direccion)) {
+      pintarCliente(r.razonSocial, r.direccion, r.localidad, r.provincia);
       msg.textContent = '✓ Datos traídos de ARCA';
       return;
     }
-    msg.className='status-msg err';
-    msg.textContent = 'ARCA no respondió — cargá los datos a mano.';
-  } catch(e) {
-    msg.className='status-msg err';
-    msg.textContent = 'Error de conexión — cargá los datos a mano.';
+  } catch(e) {}
+
+  // 2) AFIP directo desde el navegador (a veces CORS lo permite; 3 intentos)
+  msg.textContent = 'Consultando ARCA (directo)…';
+  for (let intento=0; intento<3; intento++) {
+    try {
+      const res = await fetch('https://soa.afip.gob.ar/sr-padron/v2/persona/' + cuit);
+      const d = await res.json();
+      if (d.success && d.data) {
+        const p = d.data, dom = p.domicilioFiscal || {};
+        pintarCliente(p.nombre || ((p.apellido||'')+' '+(p.nombre||'')).trim(),
+                      dom.direccion, dom.localidad, dom.descripcionProvincia);
+        msg.textContent = '✓ Datos traídos de ARCA';
+        return;
+      }
+    } catch(e) {}
+    await new Promise(r=>setTimeout(r, 500));
   }
+
+  // 3) Fuente alternativa
+  msg.textContent = 'Consultando fuente alternativa…';
+  try {
+    const res = await fetch('https://afip.tangofactura.com/Rest/GetContribuyenteFull?cuit=' + cuit);
+    const d = await res.json();
+    if (d && d.Contribuyente) {
+      const dom = d.Contribuyente.domicilioFiscal || {};
+      pintarCliente(d.Contribuyente.nombre, dom.direccion, dom.localidad, dom.descripcionProvincia);
+      msg.textContent = '✓ Datos traídos (fuente alternativa)';
+      return;
+    }
+  } catch(e) {}
+
+  msg.className='status-msg err';
+  msg.textContent = 'ARCA no respondió por ninguna vía — cargá los datos a mano.';
 }
 
 // ---------- PDF (impresión) — SIN comisión arquitecto ni datos internos ----------
