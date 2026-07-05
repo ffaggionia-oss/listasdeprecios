@@ -268,7 +268,7 @@
     </div>
 
     <div class="card" id="cardInst">
-      <h3>🔧 Instalación / Colocación</h3>
+      <h3>🔧 Instalación / Colocación <span style="font-size:11px;color:#999;font-weight:400">· costos y consumos del Maestro de Precios — solo lectura</span></h3>
       <div id="instOff">
         <button class="btn btn-dark" onclick="instToggle(true)">＋ Cotizar con instalación</button>
         <span style="font-size:12px;color:#999;margin-left:8px;">Si no la activás, se cotiza solo producto.</span>
@@ -295,19 +295,10 @@
           </div>
         </div>
 
-        <div class="inst-sec-t">Tipo de trabajo — mano de obra</div>
+        <div class="inst-sec-t">Tipo de colocación — mano de obra (Maestro del portal)</div>
         <div id="instTipos"></div>
-        <details class="inst-cat" style="margin-top:6px;">
-          <summary>Equipo de trabajo (ajustes)</summary>
-          <div class="inst-cat-body" style="display:flex;gap:12px;flex-wrap:wrap;padding-top:6px;">
-            <div><label>Capataz USD/día</label><input type="number" class="mini" style="width:90px" id="instEqCap" oninput="instSetEq('capataz',this.value)"></div>
-            <div><label>Ayudante USD/día</label><input type="number" class="mini" style="width:90px" id="instEqAyu" oninput="instSetEq('ayudante',this.value)"></div>
-            <div><label>Cant. ayudantes</label><input type="number" class="mini" style="width:70px" id="instEqCant" oninput="instSetEq('cantAyud',this.value)"></div>
-            <div style="align-self:flex-end;font-size:12px;color:#777;">Equipo: <b id="instEqDia">USD 300</b>/día</div>
-          </div>
-        </details>
 
-        <div class="inst-sec-t">Materiales de instalación</div>
+        <div class="inst-sec-t">Materiales de instalación <span style="font-size:11px;color:#999;font-weight:400">(tildá lo que incluye — cantidades calculadas por m²)</span></div>
         <div id="instMats"></div>
 
         <div class="inst-sec-t">Periféricos y servicios (cantidades por obra)</div>
@@ -460,55 +451,87 @@
 // ============================================
 // CONFIG — pegar acá la URL /exec del Apps Script
 // ============================================
-const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycbwtTmoG2G68i7W2_JtnmUGXZB_ixX91IN83yLE6bcP1Lt4hpekqC-piI3x3WyyuZhtW/exec' };
+const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycbymOId6j3brNzKsSbfR7MYJ_UIa3yOvwX6q_N60UprTUf8cZqfYy2XVnoRiZlrV0vB4PQ/exec' };  // backend unificado (Kokkai - Obras DB)
 const MAX_DESC = 5;
 
-const D = [{"cat": "Decking", "madera": "Thermo Ash", "perfil": "D31, D4sg2, D3", "linea": "Hardwood Decking", "medidas": "20X112", "largos": "800-1500", "lf": false, "em": true, "u": "m²", "a": 92.3345, "a_cur": "USD", "b": 71.0266, "b_cur": "USD", "c": 6.1207, "c_cur": "EUR", "c_unit": "m/l", "con_clip_a": 101.89, "special": true, "super": true}, {"cat": "Decking", "madera": "Thermo Spruce", "perfil": "D4B sg", "linea": "Softwood Decking", "medidas": "26x140", "largos": "3000-5399", "lf": false, "em": true, "u": "m²", "a": 70.3838, "a_cur": "USD", "b": 54.1414, "b_cur": "USD", "c": 5.6605, "c_cur": "EUR", "c_unit": "m/l", "con_clip_a": 78.56, "special": true, "super": true}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x115", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 146.0622, "a_cur": "USD", "b": 112.3556, "b_cur": "USD", "c": 9.9415, "c_cur": "EUR", "c_unit": "m/l", "special": true, "super": true}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x138", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 84.5167, "a_cur": "USD", "b": 65.0129, "b_cur": "USD", "c": 5.85, "c_cur": "EUR", "c_unit": "m/l", "special": true, "super": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 - Kodiak", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 6.9327, "a_cur": "USD", "b": 5.3329, "b_cur": "USD", "c": 3.375, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true, "special": true, "super": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 - Vivid Opaque - 4 Sides", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 12.8127, "a_cur": "USD", "b": 9.8559, "b_cur": "USD", "c": 6.2375, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true, "special": true, "super": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24 — Ignite 5 & 7", "linea": "Ignite", "medidas": "20x140", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 85.4455, "a_cur": "USD", "b": 65.7273, "b_cur": "USD", "c": 6.0, "c_cur": "EUR", "c_unit": "m/l", "special": true, "super": true}, {"cat": "Decking", "madera": "Thermo Ash", "perfil": "D31, D4sg2, D4", "linea": "Hardwood Decking", "medidas": "20x132", "largos": "800-1500", "lf": false, "em": true, "u": "m²", "a": 97.7833, "a_cur": "USD", "b": 75.2179, "b_cur": "USD", "c": 7.6393, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Ash", "perfil": "D31, D4sg2, D4", "linea": "Hardwood Decking", "medidas": "20x132", "largos": "1800-3000", "lf": false, "em": true, "u": "m²", "a": 140.588, "a_cur": "USD", "b": 108.1446, "b_cur": "USD", "c": 10.9834, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Ash", "perfil": "D4", "linea": "Hardwood Decking", "medidas": "42x90", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 402.6223, "a_cur": "USD", "b": 309.7095, "b_cur": "USD", "c": 21.4465, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4, D4sg, D30sg, D4 sgU", "linea": "Softwood Decking", "medidas": "26x140", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 70.3838, "a_cur": "USD", "b": 54.1414, "b_cur": "USD", "c": 5.6605, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D45J", "linea": "Softwood Decking", "medidas": "26x118", "largos": "3000-4800", "lf": false, "em": true, "u": "m²", "a": 71.5121, "a_cur": "USD", "b": 55.0093, "b_cur": "USD", "c": 4.8474, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 106.1056, "a_cur": "USD", "b": 81.6197, "b_cur": "USD", "c": 4.1448, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x90", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 106.7014, "a_cur": "USD", "b": 82.078, "b_cur": "USD", "c": 5.5165, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x140", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 102.8906, "a_cur": "USD", "b": 79.1466, "b_cur": "USD", "c": 8.2747, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Pine", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x42", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 114.3229, "a_cur": "USD", "b": 87.9407, "b_cur": "USD", "c": 2.7582, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Spruce", "perfil": "D4B sg", "linea": "Softwood Decking", "medidas": "26x160", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 61.5858, "a_cur": "USD", "b": 47.3737, "b_cur": "USD", "c": 5.6605, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Decking", "madera": "Thermo Spruce", "perfil": "D4", "linea": "Posts & Beams", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 102.7072, "a_cur": "USD", "b": 79.0055, "b_cur": "USD", "c": 4.012, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C9", "linea": "Hardwood Cladding - Select", "medidas": "20x112", "largos": "1800-3000", "lf": true, "em": false, "u": "m²", "a": 142.2089, "a_cur": "USD", "b": 109.3914, "b_cur": "USD", "c": 9.4267, "c_cur": "EUR", "c_unit": "m/l", "special": true}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C9", "linea": "Hardwood Cladding - Select", "medidas": "20x112", "largos": "3300-3900+", "lf": true, "em": false, "u": "m²", "a": 161.0558, "a_cur": "USD", "b": 123.8891, "b_cur": "USD", "c": 10.6761, "c_cur": "EUR", "c_unit": "m/l", "special": true}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C7, C7J, C34", "linea": "Hardwood Cladding - Select", "medidas": "20x72", "largos": "3300-3900+", "lf": false, "em": false, "u": "m/l", "a": 0.82, "a_cur": "USD", "b": 8.7609, "b_cur": "USD", "c": 6.7408, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x115", "largos": "1800-3000", "lf": true, "em": false, "u": "m/l", "a": 1.9483, "a_cur": "USD", "b": 13.0321, "b_cur": "USD", "c": 10.027, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x95", "largos": "1800-3000", "lf": true, "em": false, "u": "m²", "a": 132.4517, "a_cur": "USD", "b": 101.886, "b_cur": "USD", "c": 7.4473, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C34", "linea": "Hardwood Cladding - Select", "medidas": "20x95", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 137.2, "a_cur": "USD", "b": 105.5384, "b_cur": "USD", "c": 7.7142, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C9", "linea": "Hardwood Cladding - Select", "medidas": "20x112", "largos": "1200-3900+", "lf": true, "em": false, "u": "m²", "a": 144.6565, "a_cur": "USD", "b": 111.2743, "b_cur": "USD", "c": 9.589, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C7, C7J, C34", "linea": "Hardwood Cladding - Select", "medidas": "20x72", "largos": "1800-3000", "lf": true, "em": false, "u": "m²", "a": 147.349, "a_cur": "USD", "b": 113.3454, "b_cur": "USD", "c": 6.2791, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C20, C34, C6", "linea": "Hardwood Cladding - Select", "medidas": "20x132", "largos": "1800-3000", "lf": true, "em": false, "u": "m²", "a": 148.6989, "a_cur": "USD", "b": 114.3838, "b_cur": "USD", "c": 11.6171, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C20, C34, C6", "linea": "Hardwood Cladding - Select", "medidas": "20x132", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 154.2496, "a_cur": "USD", "b": 118.6535, "b_cur": "USD", "c": 12.0508, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Hardwood", "madera": "Thermo Ash", "perfil": "C72", "linea": "Hardwood Cladding - Select", "medidas": "26x91", "largos": "3300-3900+", "lf": false, "em": false, "u": "m²", "a": 166.2353, "a_cur": "USD", "b": 127.8733, "b_cur": "USD", "c": 8.9533, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce / Pine", "perfil": "CAR10J — Stripes", "linea": "Stripes", "medidas": "25x140", "largos": "3000-5400", "lf": false, "em": false, "u": "m²", "a": 92.5659, "a_cur": "USD", "b": 71.2046, "b_cur": "USD", "c": 6.5, "c_cur": "EUR", "c_unit": "m/l", "special": true}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "CAR3G", "linea": "Softwood Cladding", "medidas": "20x138", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 84.5167, "a_cur": "USD", "b": 65.0129, "b_cur": "USD", "c": 5.85, "c_cur": "EUR", "c_unit": "m/l", "special": true}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x115", "largos": "3000-5700", "lf": false, "em": false, "u": "m²", "a": 84.5167, "a_cur": "USD", "b": 65.0129, "b_cur": "USD", "c": 4.875, "c_cur": "EUR", "c_unit": "m/l", "special": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "CP3", "linea": "Softwood Cladding", "medidas": "42x42", "largos": "4800", "lf": false, "em": false, "u": "m/l", "a": 9.3645, "a_cur": "USD", "b": 7.2034, "b_cur": "USD", "c": 3.875, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true, "special": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15", "linea": "Softwood Cladding", "medidas": "20x186", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 60.6596, "a_cur": "USD", "b": 46.6612, "b_cur": "USD", "c": 5.1875, "c_cur": "EUR", "c_unit": "m/l", "special": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24 — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x140", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 79.6197, "a_cur": "USD", "b": 61.2459, "b_cur": "USD", "c": 5.125, "c_cur": "EUR", "c_unit": "m/l", "special": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15 — Ignite 5 & 7", "linea": "Ignite", "medidas": "20x186", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 86.9698, "a_cur": "USD", "b": 66.8999, "b_cur": "USD", "c": 7.875, "c_cur": "EUR", "c_unit": "m/l", "special": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C24", "linea": "Softwood Cladding", "medidas": "20x140", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 60.2002, "a_cur": "USD", "b": 46.3079, "b_cur": "USD", "c": 3.875, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Clear Pine", "perfil": "C7J — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x65", "largos": "3000-5400", "lf": false, "em": false, "u": "m/l", "a": 8.345, "a_cur": "USD", "b": 6.4192, "b_cur": "USD", "c": 4.0625, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C7J", "linea": "Softwood Cladding", "medidas": "20x65", "largos": "3000-4800", "lf": false, "em": true, "u": "m/l", "a": 3.9029, "a_cur": "USD", "b": 3.0022, "b_cur": "USD", "c": 1.9, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C7J — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x65", "largos": "3000-5400", "lf": false, "em": true, "u": "m/l", "a": 5.7773, "a_cur": "USD", "b": 4.4441, "b_cur": "USD", "c": 2.8125, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C7J — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "26x65", "largos": "3000-5400", "lf": false, "em": true, "u": "m/l", "a": 6.8044, "a_cur": "USD", "b": 5.2341, "b_cur": "USD", "c": 3.3125, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "D4", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 7.4976, "a_cur": "USD", "b": 5.7674, "b_cur": "USD", "c": 3.65, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x140", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 55.7553, "a_cur": "USD", "b": 42.8887, "b_cur": "USD", "c": 3.8, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "D4", "linea": "Softwood Cladding", "medidas": "42x90", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 9.9883, "a_cur": "USD", "b": 7.6833, "b_cur": "USD", "c": 4.8625, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x115", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 52.227, "a_cur": "USD", "b": 40.1746, "b_cur": "USD", "c": 3.0125, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x90", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 53.1661, "a_cur": "USD", "b": 40.897, "b_cur": "USD", "c": 2.4, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "20x68", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 55.7071, "a_cur": "USD", "b": 42.8516, "b_cur": "USD", "c": 1.9, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "26x68", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 66.7019, "a_cur": "USD", "b": 51.3092, "b_cur": "USD", "c": 2.275, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "26x115", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 66.7465, "a_cur": "USD", "b": 51.3435, "b_cur": "USD", "c": 3.85, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match", "linea": "Softwood Cladding", "medidas": "26x90", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 67.2883, "a_cur": "USD", "b": 51.7602, "b_cur": "USD", "c": 3.0375, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x115", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 73.6813, "a_cur": "USD", "b": 56.6779, "b_cur": "USD", "c": 4.125, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Pine", "perfil": "C34 Mix&Match — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x90", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 79.8834, "a_cur": "USD", "b": 61.4488, "b_cur": "USD", "c": 3.5, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Radiata Pine (Clear)", "perfil": "C7J", "linea": "Softwood Cladding", "medidas": "20x65", "largos": "2400-4800", "lf": false, "em": false, "u": "m/l", "a": 5.7516, "a_cur": "USD", "b": 4.4243, "b_cur": "USD", "c": 2.8, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4J - Benchmark", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 6.9327, "a_cur": "USD", "b": 5.3329, "b_cur": "USD", "c": 3.375, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4J - Kodiak", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 6.9327, "a_cur": "USD", "b": 5.3329, "b_cur": "USD", "c": 3.375, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C7J — Ignite 5 & 7", "linea": "Ignite", "medidas": "20x65", "largos": "3000-5400", "lf": false, "em": false, "u": "m/l", "a": 7.703, "a_cur": "USD", "b": 5.9254, "b_cur": "USD", "c": 3.75, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C7 — Vivid Black Opaque - 4 Sides", "linea": "Vivid Opaque", "medidas": "20x67", "largos": "3000-5400", "lf": false, "em": false, "u": "m/l", "a": 7.703, "a_cur": "USD", "b": 5.9254, "b_cur": "USD", "c": 3.75, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4J - Vivid Opaque - 4 Sides", "linea": "Softwood Cladding", "medidas": "42x68", "largos": "3000-5700", "lf": false, "em": false, "u": "m/l", "a": 12.8127, "a_cur": "USD", "b": 9.8559, "b_cur": "USD", "c": 6.2375, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C4 — Vivid Silvered - 4 Sides", "linea": "Vivid Silvered", "medidas": "42x68", "largos": "3000-5400", "lf": false, "em": true, "u": "m/l", "a": 13.3252, "a_cur": "USD", "b": 10.2502, "b_cur": "USD", "c": 6.487, "c_cur": "EUR", "c_unit": "m/l", "b_is_m2_when_ml": true}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C26", "linea": "Softwood Cladding", "medidas": "19x141", "largos": "3000-5700", "lf": false, "em": true, "u": "m²", "a": 59.7733, "a_cur": "USD", "b": 45.9794, "b_cur": "USD", "c": 3.875, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C15 — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "20x186", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 76.7381, "a_cur": "USD", "b": 59.0293, "b_cur": "USD", "c": 6.5625, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C26 — Vivid Opaque 10", "linea": "Vivid Opaque", "medidas": "19x141", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 79.055, "a_cur": "USD", "b": 60.8115, "b_cur": "USD", "c": 5.125, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Cladding Softwood", "madera": "Thermo Spruce", "perfil": "C26 — Ignite 5 & 7", "linea": "Ignite", "medidas": "19x141", "largos": "3000-5400", "lf": false, "em": true, "u": "m²", "a": 87.4104, "a_cur": "USD", "b": 67.2388, "b_cur": "USD", "c": 6.0, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Clips", "madera": "Accesorio", "perfil": "B1-1", "linea": "Accesorios", "medidas": "B1-1 clip (para perfiles C6, C9)", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 0.5699, "a_cur": "USD", "b": 0.4384, "b_cur": "USD", "c": 0.3392, "c_cur": "USD", "c_unit": "UN", "special": true}, {"cat": "Clips", "madera": "Accesorio", "perfil": "PC Clip", "linea": "Accesorios", "medidas": "PC clip + tornillos + 1 broca", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 0.4237, "a_cur": "USD", "b": 0.326, "b_cur": "USD", "c": 0.2655, "c_cur": "USD", "c_unit": "UN", "special": true}, {"cat": "Clips", "madera": "Accesorio", "perfil": "T-4", "linea": "Accesorios", "medidas": "T-4 clip metal negro + tornillos (D4sg2 ≤112mm)", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 0.4956, "a_cur": "USD", "b": 0.3812, "b_cur": "USD", "c": 0.295, "c_cur": "USD", "c_unit": "UN", "special": true}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "JUAN1", "linea": "Accesorios", "medidas": "JuAn® 1.0 con tope (prevención mov. longitudinal)", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 0.4936, "a_cur": "USD", "b": 0.3797, "b_cur": "USD", "c": 0.3098, "c_cur": "USD", "c_unit": "UN", "special": true}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "TUME", "linea": "Accesorios", "medidas": "Thermory® Oil DARK pigmentado 2,5L", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 81.0306, "a_cur": "USD", "b": 62.3312, "b_cur": "USD", "c": 48.2325, "c_cur": "USD", "c_unit": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "NAT", "linea": "Accesorios", "medidas": "Thermory® Oil NATURAL 2,5L", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 87.4734, "a_cur": "USD", "b": 67.2872, "b_cur": "USD", "c": 52.0675, "c_cur": "USD", "c_unit": "UN"}, {"cat": "Accesorios", "madera": "Accesorio", "perfil": "DECK Clean 1L", "linea": "Accesorios", "medidas": "Thermory® Deck Cleaning Agent 1L", "largos": "—", "lf": false, "em": false, "u": "UN", "a": 33.7008, "a_cur": "USD", "b": 25.9237, "b_cur": "USD", "c": 20.06, "c_cur": "USD", "c_unit": "UN"}, {"cat": "Parky", "madera": "Parky", "perfil": "Pro", "linea": "Click: Uniclic", "medidas": "1203 × 190 × 7,2 mm", "largos": "—", "lf": false, "em": false, "u": "m²", "a": 47.4471, "a_cur": "USD", "b": 36.4978, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 27.9513, "c_cur": "EUR", "c_unit": "m²"}, {"cat": "Parky", "madera": "Parky", "perfil": "Master", "linea": "Click: Unifit X", "medidas": "1506 × 166 × 10 mm", "largos": "—", "lf": false, "em": false, "u": "m²", "a": 58.3102, "a_cur": "USD", "b": 44.854, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 35.7687, "c_cur": "EUR", "c_unit": "m²"}, {"cat": "Parky", "madera": "Parky", "perfil": "Summit", "linea": "Click: Unifit X", "medidas": "2050 × 233 × 10 mm", "largos": "—", "lf": false, "em": false, "u": "m²", "a": 72.0161, "a_cur": "USD", "b": 55.397, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 44.1763, "c_cur": "EUR", "c_unit": "m²"}, {"cat": "Parky", "madera": "Parky", "perfil": "Summit — Frozen Walnut", "linea": "Click: Unifit X", "medidas": "2051 × 233 × 10 mm", "largos": "—", "lf": false, "em": false, "u": "m²", "a": 88.8479, "a_cur": "USD", "b": 68.3446, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 54.5012, "c_cur": "EUR", "c_unit": "m²"}, {"cat": "Parky", "madera": "Parky", "perfil": "Zócalos", "linea": "Por LM", "medidas": "L 2150 × H 60 × W 12 MM,", "largos": "—", "lf": false, "em": false, "u": "m/l", "a": 7.935, "a_cur": "USD", "b": 6.1038, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 4.8675, "c_cur": "EUR", "c_unit": "m/l"}, {"cat": "Parky", "madera": "Parky", "perfil": "Zócalos — Frozen Walnut", "linea": "Por LM", "medidas": "L 2150 × H 60 × W 12 MM,", "largos": "—", "lf": false, "em": false, "u": "m/l", "a": 9.498, "a_cur": "USD", "b": 7.3061, "b_cur": "USD", "b_is_m2_when_ml": false, "c": 5.8262, "c_cur": "EUR", "c_unit": "m/l"}];
+let D = [];  // se carga en vivo desde el Sheet de precios (getProductos)
 
 // ---------- API (mismo patrón que la app de obras) ----------
 
 // ============================================
-// INSTALACIÓN — datos del calculador de obra (H3)
+// MÓDULO INSTALACIÓN — datos EN VIVO del Maestro de Precios del portal
+// (⚙ Precios y Materiales, rol gerencia). Acá nada se edita: tipos,
+// consumos y costos son solo lectura; solo se elige qué incluye la obra.
+// Fórmula = la del portal (h3.js): MO ajustada ADITIVA, fiscal 15% mín 300.
 // ============================================
-const INST = {"equipo": {"capataz": 150, "ayudante": 75, "cantAyud": 2}, "tipos": [{"n": "Imprimación de Muro Previo", "rend": 60.0}, {"n": "Colocación de Revestimiento", "rend": 15.0}, {"n": "Colocación de Decks Sobre Carpeta Directa", "rend": 15.0}, {"n": "Colocación de Decks + Estructura Galv./Madera", "rend": 8.0}, {"n": "Remoción Deck Existente", "rend": 60.0}, {"n": "Remoción Piso Existente", "rend": 33.0}, {"n": "Colocación Piso Pegado + Zocalos", "rend": 18.75}, {"n": "Colocación Piso Flotante + Zocalos", "rend": 21.43}], "materiales": [{"cat": "Revestimientos", "n": "Perfil PGO 37 x 0,94 mm x 6,00 mts", "nota": "", "un": 3.0, "u": "Mt/L", "c": 2.8}, {"cat": "Revestimientos", "n": "Perfil PGO 22 x 0,94 mm x 3,00 mts", "nota": "", "un": 3.0, "u": "Mt/L", "c": 2.05}, {"cat": "Revestimientos", "n": "Perfil Madera Plástica 24x34x2400 mm (Alfajías)", "nota": "", "un": 3.0, "u": "Mt/L", "c": 1.4}, {"cat": "Revestimientos", "n": "Pino CCA 1x3", "nota": "", "un": 3.0, "u": "Mt/L", "c": 2.0}, {"cat": "Revestimientos", "n": "Pino CCA 2x2", "nota": "", "un": 3.0, "u": "Mt/L", "c": 2.0}, {"cat": "Revestimientos", "n": "Pino NO CCA 1/2 x 3", "nota": "", "un": 3.0, "u": "Mt/L", "c": 2.0}, {"cat": "Revestimientos", "n": "Tornillo Ø8 × 70 mm + Tarugo Nylon 8 (Par)", "nota": "", "un": 3.0, "u": "Pares", "c": 0.03}, {"cat": "Revestimientos", "n": "Tornillo Ø8 × 50 mm + Tarugo Nylon 8 (Par)", "nota": "", "un": 3.0, "u": "Pares", "c": 0.03}, {"cat": "Revestimientos", "n": "Tornillo KKTN Negro 5x40 mm (Madera-Madera)", "nota": "", "un": 25.0, "u": "Unidades", "c": 0.15}, {"cat": "Revestimientos", "n": "Tornillo KKAN 5x40 mm (Madera-Metal)", "nota": "", "un": 25.0, "u": "Unidades", "c": 0.3}, {"cat": "Revestimientos", "n": "Tornillo KKA AISI 410 5x40 mm (Acero Inoxidable)", "nota": "", "un": 25.0, "u": "Unidades", "c": 0.3}, {"cat": "Revestimientos", "n": "Tornillo KKT A4 AISI 316 5x70 mm (Solo Vanos)", "nota": "Solo vanos", "un": 5.0, "u": "Unidades", "c": 0}, {"cat": "Revestimientos", "n": "Parker Deck 10x2 Torx Ruspert", "nota": "Solo vanos", "un": 4.0, "u": "Unidades", "c": 0.07}, {"cat": "Revestimientos", "n": "Tornillo SHS 3,5x30 mm (Madera-Madera)", "nota": "", "un": 15.0, "u": "Unidades", "c": 0.05}, {"cat": "Revestimientos", "n": "Autoperforante c/Alas - Cabeza Avellaada 4x70", "nota": "", "un": 15.0, "u": "Unidades", "c": 0.05}, {"cat": "Revestimientos", "n": "Tornillo SBS - Autoperforante c/ Alas — Cabeza Avellanada 4,2x25 Inox", "nota": "", "un": 15.0, "u": "Unidades", "c": 0.05}, {"cat": "Revestimientos", "n": "Recuplast Techos (Pintura Imprimación Previa x Tacho)", "nota": "", "un": 1.0, "u": "Kg", "c": 6.8}, {"cat": "Revestimientos", "n": "Grampas (cualquier tamaño)", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Revestimientos", "n": "Clip B1-1", "nota": "", "un": 18.0, "u": "Unidades", "c": 0.38}, {"cat": "Cielo Raso", "n": "MONTANTE: (9,09m / 0,4m) x 9,88m", "nota": "", "un": 3.25, "u": "Mt/L", "c": 0.0}, {"cat": "Cielo Raso", "n": "SOLERA: 9,09x 6", "nota": "", "un": 1.28, "u": "Mt/L", "c": 0.0}, {"cat": "Cielo Raso", "n": "Autoperforante c/ Alas — Cabeza Tanque Galv. 1x1/2", "nota": "", "un": 4.0, "u": "Un", "c": 0.05}, {"cat": "Decks", "n": "Autoperforante c/ Alas — Cabeza Hexagonal Galv. (especificar medida)", "nota": "", "un": 15.0, "u": "Unidades", "c": 0.05}, {"cat": "Decks", "n": "Autoperforante c/ Alas — Cabeza Tanque Galv. (especificar medida)", "nota": "", "un": 15.0, "u": "Unidades", "c": 0.05}, {"cat": "Decks", "n": "Fresado con Alas (Madera-Metal)", "nota": "", "un": 15.0, "u": "Unidades", "c": 0.05}, {"cat": "Decks", "n": "PCG Galvanizado 80x40x15x1,6 mm — Viguetas", "nota": "Cada 0,40 mt", "un": 3.0, "u": "Mt/L", "c": 3.65}, {"cat": "Decks", "n": "PCG Galvanizado 80x40x15x1,6 mm — Perímetro", "nota": "Perímetro / Mt²", "un": 1.33, "u": "Mt/L", "c": 3.65}, {"cat": "Decks", "n": "PCG Galvanizado 80x40x15x1,6 mm — Patas", "nota": "3,5 patas x Mt² (0,15 mt)", "un": 0.52, "u": "Mt/L", "c": 3.65}, {"cat": "Decks", "n": "PCG Galvanizado 80x40x15x1,6 mm — Bloqueos y desperdicio", "nota": "2 × Espacio Interno", "un": 0.8, "u": "Mt/L", "c": 3.65}, {"cat": "Decks", "n": "Sistema Rothoblaas SUPM 95-130 mm + HEAD 2", "nota": "3,5 patas x Mt²", "un": 3.5, "u": "Un", "c": 6.0}, {"cat": "Decks", "n": "Sistema Rothoblaas SUP CORRECT (Cuña)", "nota": "3,5 patas x Mt²", "un": 3.5, "u": "Un", "c": 2.4}, {"cat": "Decks", "n": "Aluminio 20x60x1,5 mm Barra 6 mt/L — Contrapiso", "nota": "Cada 0,40 mt", "un": 3.0, "u": "Mt/L", "c": 6.0}, {"cat": "Decks", "n": "Clip Thermory T4 o PC Clips", "nota": "3 U. x Mt/l", "un": 25.0, "u": "Unidades", "c": 0.3}, {"cat": "Decks", "n": "Tornillo P/ Clip KKAN 4x30 mm", "nota": "", "un": 25.0, "u": "Unidades", "c": 0.15}, {"cat": "Decks", "n": "Tornillo Sobre Madera KKA 5x40 mm", "nota": "", "un": 25.0, "u": "Unidades", "c": 0.3}, {"cat": "Decks", "n": "Tornillo Autoperforante TEL-FIX Aguja 8x3 + Tarugo SX10", "nota": "", "un": 40.0, "u": "Unidades", "c": 0.17}, {"cat": "Decks", "n": "Bulón Expansión M10 × 80 mm — Contrapiso", "nota": "Cada 1 mt — 24 U / 10 mt²", "un": 2.4, "u": "Unidades", "c": 0.5}, {"cat": "Decks", "n": "Bulón Expansión M10 × 80 mm", "nota": "", "un": 7.0, "u": "Unidades", "c": 0.5}, {"cat": "Decks", "n": "Placa 100×100×5 mm acero estructural S235 (Pata)", "nota": "", "un": 3.5, "u": "Unidades", "c": 0.7}, {"cat": "Decks", "n": "PADS EPDM 100×100×3 mm Shore 60", "nota": "", "un": 1.33, "u": "Unidades", "c": 2.25}, {"cat": "Decks", "n": "Cinta Butílica 40 mm", "nota": "", "un": 2.5, "u": "mt/l", "c": 0}, {"cat": "Decks", "n": "Goma Microporosa 5x45", "nota": "", "un": 0.5, "u": "Mt/L", "c": 2.6}, {"cat": "Decks", "n": "Goma Para Galvanizado y Tabla", "nota": "", "un": 1.0, "u": "Mt/L", "c": 0}, {"cat": "Decks", "n": "Esquinero ángulo reforzado zincado 50 x 50 mm", "nota": "", "un": 3.0, "u": "Un", "c": 0}, {"cat": "Pisos", "n": "Manta", "nota": "", "un": 1.0, "u": "Mt²", "c": 2.21}, {"cat": "Pisos", "n": "Nylon 200 Micrones", "nota": "", "un": 1.0, "u": "Mt²", "c": 1.0}, {"cat": "Pisos", "n": "Primer/Sellador", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Pisos", "n": "Pegamento Elástico Base Xilano (Bona 820 / Kekol 831 / Mapei)", "nota": "1 kg/mt²", "un": 1.0, "u": "Kg", "c": 7.5}, {"cat": "Pisos", "n": "Zócalo 10 cm", "nota": "", "un": 0.7, "u": "Mt/l", "c": 6.0}, {"cat": "Pisos", "n": "Zócalo 15 cm", "nota": "", "un": 0.7, "u": "Mt/l", "c": 6.0}, {"cat": "Pisos", "n": "Zócalo 7 cm Curvo", "nota": "", "un": 0.7, "u": "Mt/l", "c": 6.0}, {"cat": "Pisos", "n": "Zócalo 7 cm Recto", "nota": "", "un": 0.7, "u": "Mt/l", "c": 6.0}, {"cat": "Molduras", "n": "A3070 10 mm Anodizado Dorado Mate", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A3071 10 mm Anodizado Bronce Mate", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A3080 10 mm Anodizado Plata Brillo", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A3090 10 mm Anodizado Dorado Brillo", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A2B12 12 mm Blanco", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A3BE12 12 mm Beige", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A3C12 12 mm Champagne", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A3G12 12 mm Gris", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A3M12 12 mm Marfil", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A23N12 12 mm Negro", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A307012 12 mm Anodizado Dorado Mate", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A307112 12 mm Anodizado Bronce Mate", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A308012 12 mm Anodizado Plata Brillo", "nota": "", "un": 0, "u": "", "c": 0}, {"cat": "Molduras", "n": "A309012 12 mm Anodizado Dorado Brillo", "nota": "", "un": 0, "u": "", "c": 0}], "perifericos": [{"n": "Transporte a Obra", "u": "Viaje", "c": 250.0}, {"n": "Andamios — 2 cuerpos/mes + 3 tablones", "u": "Total", "c": 95.0}, {"n": "Andamios — 3 cuerpos/mes + 3 tablones", "u": "Total", "c": 120.0}, {"n": "Andamios — 4 cuerpos/mes + 3 tablones", "u": "Total", "c": 167.0}, {"n": "Pintura Asfáltica al Agua Protex 400 Lt", "u": "Tanque 400 lt", "c": 300.0}, {"n": "Volquete", "u": "Unidad", "c": 70.0}, {"n": "Silicona PU 40", "u": "Pomo", "c": 7.0}], "escaladores": [{"n": "Desarraigo", "p": 0.25}, {"n": "Cieloraso con estructura", "p": 0.12}, {"n": "Trabajo en Altura", "p": 0.12}, {"n": "Acceso Difícil", "p": 0.1}, {"n": "Trabajo Nocturno", "p": 0.15}, {"n": "Extra Zona (3er Cordón)", "p": 0.08}, {"n": "Diseño Complejo", "p": 0.1}, {"n": "Obra < 20 mt²", "p": 0.25, "auto": "lt20"}, {"n": "Obra < 40 mt²", "p": 0.15, "auto": "lt40"}], "reductores": [{"n": "Obra 200–300 mt²", "p": -0.08, "min": 200, "max": 300}, {"n": "Obra 300–500 mt²", "p": -0.1, "min": 300, "max": 500}, {"n": "Obra 500–1000 mt²", "p": -0.125, "min": 500, "max": 1000}], "segmentos": [{"n": "PREMIUM +", "m": 0.5}, {"n": "PREMIUM", "m": 0.45}, {"n": "MEDIUM", "m": 0.4}, {"n": "MÍNIMO", "m": 0.35}, {"n": "MUY MÍNIMO", "m": 0.3}], "fiscalPct": 0.15, "fiscalMin": 300, "capAmp": 0.4};
+let MAESTRO = null; // {tipos, materiales, perifericos, escaladores, reductores, segmentos?}
 
 function instDefault() {
-  return { on:false, m2:0, modo:'sep', targetK:0, tipos:{}, mats:{}, perif:{}, esc:{}, red:{},
-    fiscal:true, margen:0.40, seg:'MEDIUM', equipo:{capataz:150, ayudante:75, cantAyud:2} };
+  return { on:false, m2:0, modo:'sep', targetK:0, tipoId:'', mats:{}, perif:{}, esc:{}, red:{},
+    fiscal:true, margen:0.40, segId:'' };
 }
 function instEnsure() { if (!cot.inst) cot.inst = instDefault(); return cot.inst; }
+
+// --- reglas automáticas por m² leídas del texto de la condición del Maestro ---
+// escaladores "Obra < 20 mt²" / "Obra < 40 mt²" → tramos; reductores "Obra 200–300 mt²" → rangos
+function instAutoEsc_() {
+  const ths = [];
+  (MAESTRO.escaladores||[]).forEach(e => {
+    const m = String(e.condicion).match(/<\s*(\d+)/);
+    if (m) ths.push({ id:e.id, lim:parseInt(m[1],10) });
+  });
+  ths.sort((a,b)=>a.lim-b.lim);
+  return ths;
+}
+function instAutoRed_(cond) {
+  const m = String(cond).match(/(\d+)\s*[–—-]\s*(\d+)/);
+  return m ? { min:parseInt(m[1],10), max:parseInt(m[2],10) } : null;
+}
+function instAutoFlags() {
+  const I = instEnsure(); const m2 = parseFloat(I.m2)||0;
+  const ths = instAutoEsc_();
+  let prev = 0;
+  ths.forEach(t => {
+    I.esc[t.id] = (m2 > 0 && m2 >= prev && m2 < t.lim);
+    prev = t.lim;
+  });
+  (MAESTRO.reductores||[]).forEach(r => {
+    const rg = instAutoRed_(r.condicion);
+    if (rg) I.red[r.id] = (m2 >= rg.min && m2 < rg.max);
+  });
+  document.querySelectorAll('#instEsc input[data-id]').forEach(ch => { ch.checked = !!I.esc[ch.dataset.id]; });
+  document.querySelectorAll('#instRed input[data-id]').forEach(ch => { ch.checked = !!I.red[ch.dataset.id]; });
+}
 
 function instCalc() {
   const I = instEnsure();
   const m2 = parseFloat(I.m2)||0;
-  const matsM2 = INST.materiales.reduce((s,m,i)=>{
-    const o = I.mats[i]; if (!o || !o.on) return s;
-    const un = (o.un!==undefined && o.un!=='') ? parseFloat(o.un)||0 : m.un;
-    const c  = (o.c!==undefined && o.c!=='')  ? parseFloat(o.c)||0  : m.c;
-    return s + un*c;
-  }, 0);
-  const perifTotal = INST.perifericos.reduce((s,p,i)=>{
-    const o = I.perif[i]; if (!o) return s;
-    const cant = parseFloat(o.cant)||0;
-    const c = (o.c!==undefined && o.c!=='') ? parseFloat(o.c)||0 : p.c;
-    return s + cant*c;
+  if (!MAESTRO) return { m2, matsM2:0, perifTotal:0, perifM2:0, moM2:0, amp:0, red:0, moTotal:0, fiscalTotal:0, fiscalM2:0, costoM2:0, costoTotal:0, mg:0, precioM2:0, precioTotal:0, rent:0 };
+
+  const matsM2 = (MAESTRO.materiales||[]).reduce((s,m)=> I.mats[m.id] ? s + (parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0) : s, 0);
+  const perifTotal = (MAESTRO.perifericos||[]).reduce((s,p)=>{
+    const cant = parseFloat(I.perif[p.id])||0;
+    return s + cant*(parseFloat(p.costoUn)||0);
   }, 0);
   const perifM2 = m2>0 ? perifTotal/m2 : 0;
-  const eq = I.equipo||{};
-  const costoDia = (parseFloat(eq.capataz)||0) + (parseFloat(eq.ayudante)||0)*(parseFloat(eq.cantAyud)||0);
-  const moBase = INST.tipos.reduce((s,t,i)=> I.tipos[i] ? s + costoDia/(t.rend||1) : s, 0);
-  const amp = Math.min(INST.capAmp, INST.escaladores.reduce((s,e,i)=> I.esc[i] ? s+e.p : s, 0));
-  const red = INST.reductores.reduce((s,r,i)=> I.red[i] ? s+r.p : s, 0);
-  const moM2 = moBase*(1+amp)*(1+red);
-  const moTotal = moM2*m2;
-  const fiscalTotal = (I.fiscal && moTotal>0) ? Math.max(moTotal*INST.fiscalPct, INST.fiscalMin) : 0;
+
+  const tipo = (MAESTRO.tipos||[]).find(t=>t.id===I.tipoId);
+  const moBase = tipo ? (parseFloat(tipo.costoMt2)||0) : 0;
+  let amp = (MAESTRO.escaladores||[]).reduce((s,e)=> I.esc[e.id] ? s + (parseFloat(e.pct)||0) : s, 0);
+  amp = Math.min(amp, 0.40);
+  const red = (MAESTRO.reductores||[]).reduce((s,r)=> I.red[r.id] ? s + (parseFloat(r.pct)||0) : s, 0);
+  const moM2 = moBase * (1 + amp + red);   // fórmula ADITIVA del portal
+  const moTotal = moM2 * m2;
+
+  const fiscalTotal = (I.fiscal && moTotal>0) ? Math.max(moTotal*0.15, 300) : 0;
   const fiscalM2 = m2>0 ? fiscalTotal/m2 : 0;
+
   const costoM2 = matsM2 + perifM2 + moM2 + fiscalM2;
   const costoTotal = costoM2*m2;
   const mg = Math.min(Math.max(parseFloat(I.margen)||0, 0), 0.9);
   const precioM2 = mg<1 ? costoM2/(1-mg) : costoM2;
   const precioTotal = precioM2*m2;
-  return { m2, matsM2, perifTotal, perifM2, costoDia, moBase, amp, red, moM2, moTotal,
+  return { m2, matsM2, perifTotal, perifM2, moBase, amp, red, moM2, moTotal,
            fiscalTotal, fiscalM2, costoM2, costoTotal, mg, precioM2, precioTotal,
            rent: precioTotal - costoTotal };
 }
@@ -517,7 +540,7 @@ function instCalc() {
 function itemsView() {
   const base = cot.items.map((it,k)=>Object.assign({_k:k}, it));
   const I = cot.inst;
-  if (!I || !I.on) return base;
+  if (!I || !I.on || !MAESTRO) return base;
   const c = instCalc();
   if (c.m2<=0 || c.precioTotal<=0) return base;
   if (I.modo==='int') {
@@ -534,25 +557,56 @@ function itemsView() {
   return base;
 }
 
-// Snapshot para guardar / PDF (nombres, sin costos internos)
+// Snapshot con NOMBRES para el PDF (sin costos internos)
 function instSnapshot() {
   const I = cot.inst;
-  if (!I || !I.on) return null;
+  if (!I || !I.on || !MAESTRO) return null;
   const c = instCalc();
-  const tipos = INST.tipos.filter((t,i)=>I.tipos[i]).map(t=>t.n);
-  const mats  = INST.materiales.filter((m,i)=>I.mats[i] && I.mats[i].on).map(m=>m.n);
-  const perif = INST.perifericos.map((p,i)=>{
-    const o=I.perif[i]; const cant=o?parseFloat(o.cant)||0:0;
-    return cant>0 ? p.n + ' (' + cant + (p.u ? ' ' + p.u.toLowerCase() + (cant!==1&&!p.u.toLowerCase().endsWith('s')?'s':'') : '') + ')' : null;
+  const tipo = (MAESTRO.tipos||[]).find(t=>t.id===I.tipoId);
+  const mats = (MAESTRO.materiales||[]).filter(m=>I.mats[m.id]).map(m=>m.insumo);
+  const perif = (MAESTRO.perifericos||[]).map(p=>{
+    const cant = parseFloat(I.perif[p.id])||0;
+    return cant>0 ? p.insumo + ' (' + cant + (p.unidad ? ' ' + String(p.unidad).toLowerCase() : '') + ')' : null;
   }).filter(Boolean);
-  const eq = I.equipo||{};
-  return { on:true, m2:c.m2, modo:I.modo, tipos, mats, perif, fiscal:!!I.fiscal,
-    equipo: '1 capataz + ' + (parseFloat(eq.cantAyud)||0) + ' ayudante' + ((parseFloat(eq.cantAyud)||0)===1?'':'s'),
-    precioM2:c.precioM2, precioTotal:c.precioTotal, cfg:I };
+  return { on:true, m2:c.m2, modo:I.modo, tipos: tipo?[tipo.tipo]:[], mats, perif, fiscal:!!I.fiscal,
+    equipo:'colocadores', precioM2:c.precioM2, precioTotal:c.precioTotal };
+}
+
+// Config por IDs del Maestro — es lo que se guarda y lo que precarga la obra al aprobar
+function instCfg() {
+  const I = cot.inst;
+  if (!I || !I.on || !MAESTRO) return null;
+  return {
+    mt2: parseFloat(I.m2)||0, modo: I.modo,
+    tipoColocacionId: I.tipoId || '',
+    materiales: (MAESTRO.materiales||[]).filter(m=>I.mats[m.id]).map(m=>({ id:m.id, incluye:true })),
+    perifericos: (MAESTRO.perifericos||[]).filter(p=>(parseFloat(I.perif[p.id])||0)>0).map(p=>({ id:p.id, cantidad: parseFloat(I.perif[p.id])||0 })),
+    escaladores: (MAESTRO.escaladores||[]).filter(e=>I.esc[e.id]).map(e=>({ id:e.id, aplica:true })),
+    reductores: (MAESTRO.reductores||[]).filter(r=>I.red[r.id]).map(r=>({ id:r.id, aplica:true })),
+    fiscalIncluido: !!I.fiscal, margen: I.margen, segmentoId: I.segId || ''
+  };
+}
+// Reconstruye el estado desde una config guardada (por IDs)
+function instDesdeCfg(cfg) {
+  const I = instDefault();
+  if (!cfg) return I;
+  I.on = true;
+  I.m2 = cfg.mt2 || 0;
+  I.modo = cfg.modo || 'sep';
+  I.tipoId = cfg.tipoColocacionId || '';
+  (cfg.materiales||[]).forEach(m=>{ if(m.incluye) I.mats[m.id]=true; });
+  (cfg.perifericos||[]).forEach(p=>{ I.perif[p.id]=p.cantidad; });
+  (cfg.escaladores||[]).forEach(e=>{ if(e.aplica) I.esc[e.id]=true; });
+  (cfg.reductores||[]).forEach(r=>{ if(r.aplica) I.red[r.id]=true; });
+  I.fiscal = cfg.fiscalIncluido !== false;
+  I.margen = (cfg.margen!==undefined && cfg.margen!==null) ? cfg.margen : 0.40;
+  I.segId = cfg.segmentoId || '';
+  return I;
 }
 
 // ---------- UI ----------
 function instToggle(on) {
+  if (on && !MAESTRO) { alert('El Maestro de Precios no está disponible para tu usuario.'); return; }
   instEnsure().on = on;
   document.getElementById('instOff').classList.toggle('hidden', on);
   document.getElementById('instBody').classList.toggle('hidden', !on);
@@ -561,16 +615,17 @@ function instToggle(on) {
   renderCart();
 }
 function instSet(k,v) { instEnsure()[k]=v; if (k==='modo') instTargetVis(); instRecalc(); }
-function instSetEq(k,v) { instEnsure().equipo[k]=parseFloat(v)||0; instRecalc(); }
+function instSetTipo(id) { instEnsure().tipoId = id; instRecalc(); }
 function instSetMargen(v) {
-  const I=instEnsure(); I.margen=Math.min(Math.max((parseFloat(v)||0)/100,0),0.9); I.seg='';
+  const I=instEnsure(); I.margen=Math.min(Math.max((parseFloat(v)||0)/100,0),0.9); I.segId='';
   document.querySelectorAll('#instSegs .seg-btn').forEach(b=>b.classList.remove('active'));
   instRecalc();
 }
-function instSetSeg(i) {
-  const s=INST.segmentos[i]; const I=instEnsure(); I.margen=s.m; I.seg=s.n;
-  document.getElementById('instMargen').value=Math.round(s.m*100);
-  document.querySelectorAll('#instSegs .seg-btn').forEach((b,k)=>b.classList.toggle('active',k===i));
+function instSetSeg(id) {
+  const s=(MAESTRO.segmentos||[]).find(x=>x.id===id); if (!s) return;
+  const I=instEnsure(); I.margen=parseFloat(s.margen)||0; I.segId=s.id;
+  document.getElementById('instMargen').value=Math.round(I.margen*100);
+  document.querySelectorAll('#instSegs .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.id===id));
   instRecalc();
 }
 function instSetM2(v) {
@@ -583,17 +638,6 @@ function instM2DesdeCarrito(silencioso) {
   if (!m2 && !silencioso) { alert('No hay productos en m² en el carrito.'); return; }
   document.getElementById('instM2').value = m2||'';
   instSetM2(m2);
-}
-function instAutoFlags() {
-  // marca/desmarca automáticamente las condiciones que dependen del tamaño de obra
-  const I=instEnsure(); const m2=parseFloat(I.m2)||0;
-  INST.escaladores.forEach((e,i)=>{
-    if (e.auto==='lt20') I.esc[i] = m2>0 && m2<20;
-    if (e.auto==='lt40') I.esc[i] = m2>=20 && m2<40;
-  });
-  INST.reductores.forEach((r,i)=>{ I.red[i] = m2>=r.min && m2<r.max; });
-  document.querySelectorAll('#instEsc input[data-i]').forEach(ch=>{ ch.checked = !!I.esc[ch.dataset.i]; });
-  document.querySelectorAll('#instRed input[data-i]').forEach(ch=>{ ch.checked = !!I.red[ch.dataset.i]; });
 }
 function instTargetVis() {
   const I=instEnsure();
@@ -608,80 +652,76 @@ function instTargetVis() {
 
 function buildInstUI() {
   const I = instEnsure();
+  const card = document.getElementById('cardInst');
+  if (!MAESTRO) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
   document.getElementById('instOff').classList.toggle('hidden', I.on);
   document.getElementById('instBody').classList.toggle('hidden', !I.on);
   if (!I.on) return;
+  if (!I.tipoId && (MAESTRO.tipos||[]).length) I.tipoId = (MAESTRO.tipos[1]||MAESTRO.tipos[0]).id;
   document.getElementById('instM2').value = I.m2||'';
   document.getElementById('instModo').value = I.modo||'sep';
   document.getElementById('instFiscal').checked = !!I.fiscal;
-  const eq=I.equipo||{};
-  document.getElementById('instEqCap').value = eq.capataz;
-  document.getElementById('instEqAyu').value = eq.ayudante;
-  document.getElementById('instEqCant').value = eq.cantAyud;
   document.getElementById('instMargen').value = Math.round((I.margen||0)*100);
   instTargetVis();
 
-  // Tipos de trabajo
-  document.getElementById('instTipos').innerHTML = INST.tipos.map((t,i)=>`
+  // Tipo de colocación — UNO solo (radio), costo del Maestro, solo lectura
+  document.getElementById('instTipos').innerHTML = (MAESTRO.tipos||[]).map(t=>`
     <div class="inst-row">
-      <label><input type="checkbox" data-i="${i}" ${I.tipos[i]?'checked':''}
-        onchange="instEnsure().tipos[${i}]=this.checked;instRecalc()"> ${t.n}</label>
-      <span class="calc">${t.rend} m²/día → <b id="instTipoC${i}">—</b>/m²</span>
+      <label><input type="radio" name="instTipoR" value="${t.id}" ${I.tipoId===t.id?'checked':''}
+        onchange="instSetTipo('${t.id}')"> ${t.tipo}</label>
+      <span class="calc">USD ${fmt(parseFloat(t.costoMt2)||0)}/m²${t.rendimiento?' · '+t.rendimiento+' m²/día':''}</span>
     </div>`).join('');
 
-  // Materiales por categoría
-  const cats=[...new Set(INST.materiales.map(m=>m.cat))];
+  // Materiales por categoría — consumo y costo del Maestro (solo lectura),
+  // con la CANTIDAD TOTAL calculada para los m² de la obra
+  const cats=[...new Set((MAESTRO.materiales||[]).map(m=>m.categoria||'Otros'))];
   document.getElementById('instMats').innerHTML = cats.map(cat=>{
-    const rows = INST.materiales.map((m,i)=>({m,i})).filter(x=>x.m.cat===cat).map(({m,i})=>{
-      const o=I.mats[i]||{};
-      const un=(o.un!==undefined&&o.un!=='')?o.un:m.un, c=(o.c!==undefined&&o.c!=='')?o.c:m.c;
-      return `<div class="inst-row">
-        <label><input type="checkbox" ${o.on?'checked':''}
-          onchange="(instEnsure().mats[${i}]=instEnsure().mats[${i}]||{}).on=this.checked;instRecalc()">
-          ${m.n}${m.nota?' <span style=\"color:#aaa\">('+m.nota+')</span>':''}</label>
-        <input type="number" class="mini" step="any" value="${un}" title="unidades por m²"
-          oninput="(instEnsure().mats[${i}]=instEnsure().mats[${i}]||{}).un=this.value;instRecalc()"> <small style="color:#999">${m.u||'un'}/m²</small>
-        <input type="number" class="mini" step="any" value="${c}" title="costo USD por unidad"
-          oninput="(instEnsure().mats[${i}]=instEnsure().mats[${i}]||{}).c=this.value;instRecalc()"> <small style="color:#999">USD/un</small>
-        <span class="calc"><b id="instMatC${i}">—</b>/m²</span>
-      </div>`;
-    }).join('');
+    const rows = (MAESTRO.materiales||[]).filter(m=>(m.categoria||'Otros')===cat).map(m=>`
+      <div class="inst-row">
+        <label><input type="checkbox" ${I.mats[m.id]?'checked':''}
+          onchange="instEnsure().mats['${m.id}']=this.checked;instRecalc()">
+          ${m.insumo}${m.proveedor?' <span style="color:#aaa">('+m.proveedor+')</span>':''}</label>
+        <span class="calc" style="color:#777">${m.unMt2} ${m.unidad||'un'}/m² · USD ${fmt(parseFloat(m.costoUn)||0)} c/u</span>
+        <span class="calc"><b id="instMatQ-${m.id}">—</b></span>
+        <span class="calc"><b id="instMatC-${m.id}">—</b>/m²</span>
+      </div>`).join('');
     return `<details class="inst-cat"><summary>${cat} <span class="cnt" id="instCatCnt-${cat.replace(/\s/g,'_')}"></span></summary><div class="inst-cat-body">${rows}</div></details>`;
   }).join('');
 
-  // Periféricos
-  document.getElementById('instPerif').innerHTML = INST.perifericos.map((p,i)=>{
-    const o=I.perif[i]||{};
-    const c=(o.c!==undefined&&o.c!=='')?o.c:p.c;
-    return `<div class="inst-row">
-      <label style="cursor:default">${p.n}</label>
-      <input type="number" class="mini" min="0" step="any" value="${o.cant||''}" placeholder="0" title="cantidad"
-        oninput="(instEnsure().perif[${i}]=instEnsure().perif[${i}]||{}).cant=this.value;instRecalc()"> <small style="color:#999">${p.u||'un'}</small>
-      <input type="number" class="mini" step="any" value="${c}" title="costo USD por unidad"
-        oninput="(instEnsure().perif[${i}]=instEnsure().perif[${i}]||{}).c=this.value;instRecalc()"> <small style="color:#999">USD c/u</small>
-      <span class="calc"><b id="instPerC${i}">—</b></span>
-    </div>`;
-  }).join('');
+  // Periféricos — cantidad por obra (único campo editable), costo del Maestro
+  document.getElementById('instPerif').innerHTML = (MAESTRO.perifericos||[]).map(p=>`
+    <div class="inst-row">
+      <label style="cursor:default">${p.insumo}${p.proveedor?' <span style="color:#aaa">('+p.proveedor+')</span>':''}</label>
+      <input type="number" class="mini" min="0" step="any" value="${I.perif[p.id]||''}" placeholder="0" title="cantidad"
+        oninput="instEnsure().perif['${p.id}']=this.value;instRecalc()"> <small style="color:#999">${p.unidad||'un'}</small>
+      <span class="calc" style="color:#777">USD ${fmt(parseFloat(p.costoUn)||0)} c/u</span>
+      <span class="calc"><b id="instPerC-${p.id}">—</b></span>
+    </div>`).join('');
 
-  // Escaladores / reductores
+  // Dificultad — escaladores y reductores del Maestro (los de tamaño, automáticos)
   document.getElementById('instEsc').innerHTML =
     '<div style="font-size:11px;font-weight:800;color:#999;margin-bottom:4px;">AMPLÍAN LA MANO DE OBRA (cap 40%)</div>' +
-    INST.escaladores.map((e,i)=>`
-    <div class="inst-row"><label><input type="checkbox" data-i="${i}" ${I.esc[i]?'checked':''}
-      onchange="instEnsure().esc[${i}]=this.checked;instRecalc()"> ${e.n}${e.auto?' <span style=\"color:#bbb;font-size:10px\">(auto)</span>':''}</label>
-      <span class="calc">+${Math.round(e.p*100)}%</span></div>`).join('');
+    (MAESTRO.escaladores||[]).map(e=>{
+      const auto = /<\s*\d+/.test(String(e.condicion));
+      return `<div class="inst-row"><label><input type="checkbox" data-id="${e.id}" ${I.esc[e.id]?'checked':''}
+        onchange="instEnsure().esc['${e.id}']=this.checked;instRecalc()"> ${e.condicion}${auto?' <span style="color:#bbb;font-size:10px">(auto)</span>':''}</label>
+        <span class="calc">+${Math.round((parseFloat(e.pct)||0)*100)}%</span></div>`;
+    }).join('');
   document.getElementById('instRed').innerHTML =
     '<div style="font-size:11px;font-weight:800;color:#999;margin-bottom:4px;">REDUCEN POR VOLUMEN</div>' +
-    INST.reductores.map((r,i)=>`
-    <div class="inst-row"><label><input type="checkbox" data-i="${i}" ${I.red[i]?'checked':''}
-      onchange="instEnsure().red[${i}]=this.checked;instRecalc()"> ${r.n} <span style="color:#bbb;font-size:10px">(auto)</span></label>
-      <span class="calc">${Math.round(r.p*100)}%</span></div>`).join('');
+    (MAESTRO.reductores||[]).map(r=>{
+      const auto = !!instAutoRed_(r.condicion);
+      return `<div class="inst-row"><label><input type="checkbox" data-id="${r.id}" ${I.red[r.id]?'checked':''}
+        onchange="instEnsure().red['${r.id}']=this.checked;instRecalc()"> ${r.condicion}${auto?' <span style="color:#bbb;font-size:10px">(auto)</span>':''}</label>
+        <span class="calc">${Math.round((parseFloat(r.pct)||0)*100)}%</span></div>`;
+    }).join('');
 
-  // Segmentos
-  document.getElementById('instSegs').innerHTML = INST.segmentos.map((s,i)=>`
-    <div class="seg-btn ${I.seg===s.n?'active':''}" onclick="instSetSeg(${i})">
-      <div class="sn">${s.n}</div><div class="sm">margen ${Math.round(s.m*100)}%</div>
-      <div class="sp" id="instSegP${i}">—</div>
+  // Segmentos de margen (vienen del Maestro; si no llegan, queda el margen manual)
+  document.getElementById('instSegs').innerHTML = (MAESTRO.segmentos||[]).map(s=>`
+    <div class="seg-btn ${I.segId===s.id?'active':''}" data-id="${s.id}" onclick="instSetSeg('${s.id}')">
+      <div class="sn">${s.nombre}</div><div class="sm">margen ${Math.round((parseFloat(s.margen)||0)*100)}%</div>
+      <div class="sp" id="instSegP-${s.id}">—</div>
     </div>`).join('');
 
   instRecalc(true);
@@ -689,41 +729,35 @@ function buildInstUI() {
 
 function instRecalc(skipCart) {
   const I = instEnsure();
-  if (!I.on) { renderCart(); return; }
+  if (!I.on || !MAESTRO) { if (!skipCart) renderCart(); return; }
   const c = instCalc();
-  // labels dinámicos
-  document.getElementById('instEqDia').textContent = 'USD ' + fmt(c.costoDia);
-  INST.tipos.forEach((t,i)=>{
-    const el=document.getElementById('instTipoC'+i);
-    if (el) el.textContent = 'USD ' + fmt(c.costoDia/(t.rend||1));
+  const m2 = c.m2;
+  (MAESTRO.materiales||[]).forEach(m=>{
+    const elC=document.getElementById('instMatC-'+m.id);
+    if (elC) elC.textContent = 'USD ' + fmt((parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0));
+    const elQ=document.getElementById('instMatQ-'+m.id);
+    if (elQ) elQ.textContent = (I.mats[m.id] && m2>0) ? ('≈ ' + fmt((parseFloat(m.unMt2)||0)*m2, 1) + ' ' + (m.unidad||'un')) : '—';
   });
   const cats={};
-  INST.materiales.forEach((m,i)=>{
-    const o=I.mats[i]||{};
-    const un=(o.un!==undefined&&o.un!=='')?parseFloat(o.un)||0:m.un;
-    const cc=(o.c!==undefined&&o.c!=='')?parseFloat(o.c)||0:m.c;
-    const el=document.getElementById('instMatC'+i);
-    if (el) el.textContent = 'USD ' + fmt(un*cc);
-    if (o.on) cats[m.cat]=(cats[m.cat]||0)+1;
-  });
-  [...new Set(INST.materiales.map(m=>m.cat))].forEach(cat=>{
+  (MAESTRO.materiales||[]).forEach(m=>{ if (I.mats[m.id]) { const cat=m.categoria||'Otros'; cats[cat]=(cats[cat]||0)+1; } });
+  [...new Set((MAESTRO.materiales||[]).map(m=>m.categoria||'Otros'))].forEach(cat=>{
     const el=document.getElementById('instCatCnt-'+cat.replace(/\s/g,'_'));
     if (el) el.textContent = cats[cat] ? '· '+cats[cat]+' ✓' : '';
   });
-  INST.perifericos.forEach((p,i)=>{
-    const o=I.perif[i]||{};
-    const cant=parseFloat(o.cant)||0;
-    const cc=(o.c!==undefined&&o.c!=='')?parseFloat(o.c)||0:p.c;
-    const el=document.getElementById('instPerC'+i);
-    if (el) el.textContent = cant>0 ? 'USD '+fmt(cant*cc) : '—';
+  (MAESTRO.perifericos||[]).forEach(p=>{
+    const cant=parseFloat(I.perif[p.id])||0;
+    const el=document.getElementById('instPerC-'+p.id);
+    if (el) el.textContent = cant>0 ? 'USD '+fmt(cant*(parseFloat(p.costoUn)||0)) : '—';
   });
-  INST.segmentos.forEach((s,i)=>{
-    const el=document.getElementById('instSegP'+i);
-    if (el) el.textContent = 'USD ' + fmt(c.costoM2/(1-s.m)) + '/m²';
+  (MAESTRO.segmentos||[]).forEach(s=>{
+    const el=document.getElementById('instSegP-'+s.id);
+    const mgS = parseFloat(s.margen)||0;
+    if (el) el.textContent = 'USD ' + fmt(mgS<1 ? c.costoM2/(1-mgS) : c.costoM2) + '/m²';
   });
   // resumen interno
   const descPct = Math.min(Math.max(parseFloat(document.getElementById('inDesc').value)||0,0),MAX_DESC);
   const rentReal = c.precioTotal*(1-descPct/100) - c.costoTotal;
+  const segNombre = I.segId ? (((MAESTRO.segmentos||[]).find(s=>s.id===I.segId)||{}).nombre||'') : 'manual';
   document.getElementById('instResumen').innerHTML = `
     <div class="interno-title">Instalación — solo interno, no va al cliente</div>
     <div class="tot-line"><span>Materiales x m²</span><span>USD ${fmt(c.matsM2)}</span></div>
@@ -731,12 +765,12 @@ function instRecalc(skipCart) {
     <div class="tot-line"><span>Mano de obra x m² (dif. +${Math.round(c.amp*100)}% / vol. ${Math.round(c.red*100)}%)</span><span>USD ${fmt(c.moM2)}</span></div>
     <div class="tot-line"><span>Fiscal de obra${c.fiscalTotal>0?' (total USD '+fmt(c.fiscalTotal)+')':''}</span><span>USD ${fmt(c.fiscalM2)}</span></div>
     <div class="tot-line big" style="font-size:13px;"><span>COSTO</span><span>USD ${fmt(c.costoM2)}/m² · USD ${fmt(c.costoTotal)} obra</span></div>
-    <div class="tot-line"><span>Margen ${I.seg||'manual'} (${Math.round(c.mg*100)}% s/precio)</span><span>USD ${fmt(c.rent)}</span></div>
+    <div class="tot-line"><span>Margen ${segNombre} (${Math.round(c.mg*100)}% s/precio)</span><span>USD ${fmt(c.rent)}</span></div>
     <div class="tot-line big" style="font-size:13px;color:#C9A227;"><span>PRECIO INSTALACIÓN</span><span>USD ${fmt(c.precioM2)}/m² · USD ${fmt(c.precioTotal)} obra</span></div>
     ${descPct>0 ? '<div class="tot-line"><span>Rentabilidad real con descuento de cierre '+descPct+'%</span><span>USD '+fmt(rentReal)+'</span></div>' : ''}`;
   const warns=[];
   if (c.m2<=0) warns.push('Cargá los m² a instalar.');
-  if (!INST.tipos.some((t,i)=>I.tipos[i])) warns.push('Elegí al menos un tipo de trabajo.');
+  if (!I.tipoId) warns.push('Elegí el tipo de colocación.');
   if (I.modo==='int' && !cot.items.length) warns.push('Modo integrado: agregá el producto al carrito primero.');
   document.getElementById('instWarn').innerHTML = warns.length ? '<div class="inst-warn">⚠ '+warns.join(' · ')+'</div>' : '';
   if (!skipCart) renderCart();
@@ -788,7 +822,7 @@ async function doLogin() {
   try {
     const r = await API.get({ action:'login', token });
     if (!r.ok) { document.getElementById('loginMsg').textContent = r.error || 'Token inválido'; return; }
-    currentUser = { token, usuario:r.usuario, rol:r.rol };
+    currentUser = { token, usuario: r.nombre || r.usuario, rol: r.rol };
     localStorage.setItem('kk_cot_token', token);
     iniciarApp();
   } catch(e) {
@@ -806,15 +840,45 @@ async function iniciarApp() {
   document.getElementById('userName').textContent = currentUser.usuario;
   traerTC(true);
   if (!localStorage.getItem('kk_cot_draft')) {
-    const vd0 = currentUser.usuario === 'Franco' ? 'Franco Faggioni' : 'Christian Holler';
+    const vd0 = currentUser.usuario.indexOf('Christian') === 0 ? 'Christian Holler' : 'Franco Faggioni';
     document.getElementById('inVend').value = vd0;
     document.getElementById('inComVend').value = defaultComVend(vd0);
   }
-  renderProdList();
+  document.getElementById('prodList').innerHTML = '<div style="padding:14px;color:#aaa;">Cargando lista de precios…</div>';
+  document.getElementById('cardInst').classList.add('hidden'); // se muestra solo si llega el Maestro
   restaurarBorradorLocal();
+  renderCart();
+  await Promise.all([cargarProductos(), cargarMaestro(), cargarClientes(), cargarCots()]);
+  renderProdList();
   buildInstUI();
   renderCart();
-  await Promise.all([cargarClientes(), cargarCots()]);
+}
+
+// Productos de madera EN VIVO desde el Sheet de precios (con respaldo local si falla la red)
+async function cargarProductos() {
+  try {
+    const r = await API.get({ action:'getProductos', token: currentUser.token });
+    if (r.ok && r.productos && r.productos.length) {
+      D = r.productos;
+      localStorage.setItem('kk_D_cache', JSON.stringify(D));
+      return;
+    }
+    throw new Error(r.error || 'sin productos');
+  } catch(e) {
+    const cacheD = localStorage.getItem('kk_D_cache');
+    if (cacheD) { D = JSON.parse(cacheD); return; }
+    document.getElementById('prodList').innerHTML = '<div style="padding:14px;color:#b33;">No pude traer la lista de precios ('+ (e.message||e) +'). Recargá la página.</div>';
+  }
+}
+
+// Maestro de instalación del portal. Si el rol no tiene acceso (ventas),
+// la card 🔧 Instalación queda oculta y se cotiza solo material.
+async function cargarMaestro() {
+  try {
+    const r = await API.get({ action:'getMaestro', token: currentUser.token });
+    if (r.ok) MAESTRO = { tipos:r.tipos||[], materiales:r.materiales||[], perifericos:r.perifericos||[],
+                          escaladores:r.escaladores||[], reductores:r.reductores||[], segmentos:r.segmentos||[] };
+  } catch(e) { MAESTRO = null; }
 }
 
 // ---------- Tabs ----------
@@ -1008,11 +1072,12 @@ async function guardarCot() {
   msg.textContent = 'Guardando…';
   try {
     const r = await API.post({
-      action:'saveCot', token: currentUser.token,
+      action:'cotSave', token: currentUser.token,
       id: cot.id, estado: cot.estado,
       clienteId: cliente.id, clienteNombre: cliente.razonSocial,
       items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, cant:it.cant, conClip:it.conClip})),
       inst: instSnapshot(),
+      instCfg: instCfg(),
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
       padreId: cot.padreId || '',
@@ -1034,7 +1099,7 @@ async function guardarCot() {
 
 async function cargarCots() {
   try {
-    const r = await API.get({ action:'listCots', token: currentUser.token });
+    const r = await API.get({ action:'cotList', token: currentUser.token });
     if (r.ok) { COTS = r.cots; renderCotList(); }
   } catch(e){ document.getElementById('cotList').innerHTML = '<div style="color:#b33;padding:14px;">Error de conexión</div>'; }
 }
@@ -1060,7 +1125,7 @@ function necesitaSeguimiento_(c) {
 }
 async function registrarSeguimiento(id) {
   const c = COTS.find(x=>x.id===id); if (!c) return;
-  const r = await API.post({ action:'updateEstado', id, estado: c.estado, token: currentUser.token });
+  const r = await API.post({ action:'cotEstado', id, estado: c.estado, token: currentUser.token });
   if (!r.ok) return alert('Error: ' + r.error);
   cargarCots();
 }
@@ -1082,7 +1147,7 @@ async function toggleComentarios(id) {
   p.classList.remove('hidden');
   p.innerHTML = '<div style="color:#aaa;font-size:12px;">Cargando…</div>';
   try {
-    const r = await API.get({ action:'comentarios', id, token: currentUser.token });
+    const r = await API.get({ action:'cotComentarios', id, token: currentUser.token });
     const coms = (r.ok && r.comentarios) ? r.comentarios : [];
     p.innerHTML = `
       <div>${coms.map(c=>`<div class="com-item"><span class="com-meta">${c.fecha} — <b>${c.usuario}</b></span>${c.texto}</div>`).join('') || '<div style="color:#aaa;font-size:12px;">Sin comentarios todavía.</div>'}</div>
@@ -1099,7 +1164,7 @@ async function agregarComentario(id) {
   const texto = (inp.value||'').trim(); if (!texto) return;
   inp.disabled = true;
   try {
-    const r = await API.post({ action:'addComentario', id, texto, token: currentUser.token });
+    const r = await API.post({ action:'cotAddComentario', id, texto, token: currentUser.token });
     if (!r.ok) { alert('Error: ' + r.error); inp.disabled = false; return; }
     await cargarCots();               // refresca contador 💬 y reinicia el reloj de 10 días
     toggleComentarios(id);            // reabre el panel con el comentario nuevo
@@ -1159,7 +1224,7 @@ function renderCotList() {
 }
 
 async function abrirCot(id, duplicar) {
-  const r = await API.get({ action:'getCot', id, token: currentUser.token });
+  const r = await API.get({ action:'cotGet', id, token: currentUser.token });
   if (!r.ok) return alert('No se pudo cargar: ' + r.error);
   const c = r.cot;
   cot = nuevaCotObj();
@@ -1171,8 +1236,8 @@ async function abrirCot(id, duplicar) {
   cot.clienteId = c.clienteId;
   cot.vendedor = c.vendedor;
   cot.padreId = duplicar ? '' : (c.padreId || '');
-  const tieneInstCfg = !!(c.inst && c.inst.on && c.inst.cfg);
-  cot.inst = tieneInstCfg ? Object.assign(instDefault(), c.inst.cfg, {on:true}) : instDefault();
+  const tieneInstCfg = !!(MAESTRO && c.instCfg && c.inst && c.inst.on); // sin Maestro (ventas), la instalación queda como ítem congelado con su precio guardado
+  cot.inst = tieneInstCfg ? instDesdeCfg(c.instCfg) : instDefault();
   cot.items = c.items
     .filter(it => !(tieneInstCfg && it.cat==='Instalación'))  // el ítem de instalación se regenera desde la config
     .map(it => {
@@ -1207,14 +1272,17 @@ async function abrirCot(id, duplicar) {
 }
 
 async function cambiarEstado(id, estado) {
-  const r = await API.post({ action:'updateEstado', id, estado, token: currentUser.token });
-  if (!r.ok) alert('Error: ' + r.error);
+  if (estado === 'Aprobada' && !confirm('¿Aprobar ' + id + '? Se crea automáticamente la obra en el Portal de Obras con la instalación precargada.')) { cargarCots(); return; }
+  const r = await API.post({ action:'cotEstado', id, estado, token: currentUser.token });
+  if (!r.ok) { alert('Error: ' + r.error); cargarCots(); return; }
+  if (r.obraCodigo) alert('✓ ' + id + ' aprobada.\nSe creó la obra ' + r.obraCodigo + ' en el Portal de Obras con el H3 precargado.');
+  if (r.obraError) alert('⚠ ' + r.obraError);
   cargarCots();
 }
 
 async function eliminarCot(id) {
   if (!confirm('¿Eliminar ' + id + '? (queda registrada en el Sheet como eliminada)')) return;
-  const r = await API.post({ action:'deleteCot', id, token: currentUser.token });
+  const r = await API.post({ action:'cotDelete', id, token: currentUser.token });
   if (!r.ok) alert('Error: ' + r.error);
   cargarCots();
 }
@@ -1222,7 +1290,7 @@ async function eliminarCot(id) {
 // ---------- Clientes ----------
 async function cargarClientes() {
   try {
-    const r = await API.get({ action:'listClientes', token: currentUser.token });
+    const r = await API.get({ action:'cliList', token: currentUser.token });
     if (r.ok) { CLIENTES = r.clientes; renderClientes(); }
   } catch(e){}
 }
@@ -1282,7 +1350,7 @@ async function guardarCliente() {
     condIva: document.getElementById('cCondIva').value
   };
   try {
-    const r = await API.post({ action:'saveCliente', cliente, token: currentUser.token });
+    const r = await API.post({ action:'cliSave', cliente, token: currentUser.token });
     if (!r.ok) { msg.className='status-msg err'; msg.textContent='Error: '+r.error; return; }
     msg.textContent = '✓ Cliente guardado';
     await cargarClientes();
@@ -1551,7 +1619,7 @@ function imprimirPdf() {
 }
 
 async function pdfDesdeLista(id) {
-  const r = await API.get({ action:'getCot', id, token: currentUser.token });
+  const r = await API.get({ action:'cotGet', id, token: currentUser.token });
   if (!r.ok) return alert('No se pudo cargar');
   const cli = CLIENTES.find(c=>c.id===r.cot.clienteId);
   buildPrint(r.cot, cli || { razonSocial: r.cot.clienteNombre });
