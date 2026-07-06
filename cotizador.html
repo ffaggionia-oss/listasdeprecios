@@ -449,6 +449,25 @@
 <!-- ===== ÁREA DE IMPRESIÓN (PDF al cliente — SIN datos internos) ===== -->
 <div id="printArea"></div>
 
+<!-- Modal de aprobación con instalación: últimos comentarios + planos/fotos -->
+<div id="modalAprobar" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow:auto;padding:22px;">
+    <h3 style="margin:0 0 4px;">Aprobar <span id="apId"></span></h3>
+    <div style="font-size:12.5px;color:#666;margin-bottom:14px;">
+      Se crea la obra en el Portal con el H3 y el costo planificado precargados, se avisa a Nicolás y Sandra (pedido) y le llega a Paco la solicitud de visita con el resumen de la obra.
+    </div>
+    <label style="font-size:12px;font-weight:700;">Últimos comentarios para la visita (van en el mail a Paco)</label>
+    <textarea id="apComentario" rows="3" style="width:100%;margin:4px 0 12px;padding:8px;border:1px solid #ddd;border-radius:8px;font:inherit;" placeholder="Ej: coordinar con el encargado del edificio, hay que subir por escalera de servicio…"></textarea>
+    <label style="font-size:12px;font-weight:700;">Planos y fotos de la obra (van al Drive y a la pestaña Fotos del portal)</label>
+    <input type="file" id="apArchivos" multiple accept="image/*,.pdf,.dwg,.dxf" style="display:block;margin:6px 0 4px;">
+    <div id="apArchivosInfo" style="font-size:11.5px;color:#888;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn-sec" onclick="cerrarModalAprobar()">Cancelar</button>
+      <button class="btn" id="apBtnOk" onclick="confirmarAprobacion()">✓ Aprobar y enviar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================
 // CONFIG — pegar acá la URL /exec del Apps Script
@@ -1284,15 +1303,76 @@ async function abrirCot(id, duplicar) {
 async function cambiarEstado(id, estado) {
   if (estado === 'Aprobada') {
     const cRef = (COTS || []).find(x => x.id === id);
-    const msg = (cRef && cRef.tieneInst)
-      ? '¿Aprobar ' + id + '? Se crea automáticamente la obra en el Portal de Obras con la instalación y el costo planificado precargados.'
-      : '¿Aprobar ' + id + '? Es solo material: se envía el pedido aprobado por email a Nicolás y Sandra' + (currentUser.rol !== 'gerencia' ? ' y a Franco' : '') + '.';
+    if (cRef && cRef.tieneInst) { abrirModalAprobar(id); return; }
+    const msg = '¿Aprobar ' + id + '? Es solo material: se envía el pedido aprobado por email a Nicolás y Sandra' + (currentUser.rol !== 'gerencia' ? ' y a Franco' : '') + '.';
     if (!confirm(msg)) { cargarCots(); return; }
   }
   const r = await API.post({ action:'cotEstado', id, estado, token: currentUser.token });
   if (!r.ok) { alert('Error: ' + r.error); cargarCots(); return; }
-  if (r.obraCodigo) alert('✓ ' + id + ' aprobada.\nSe creó la obra ' + r.obraCodigo + ' en el Portal de Obras con el H3 y el costo planificado precargados.');
   if (r.mailAprobada) alert('✓ ' + id + ' aprobada.\nPedido de material enviado por email a Nicolás y Sandra.');
+  if (r.obraError) alert('⚠ ' + r.obraError);
+  cargarCots();
+}
+
+// ---- Modal de aprobación con instalación (comentarios + planos/fotos) ----
+let modalAprobarId = null;
+const AP_MAX_FILE = 8 * 1024 * 1024;    // 8 MB por archivo
+const AP_MAX_TOTAL = 20 * 1024 * 1024;  // 20 MB en total (límite de Apps Script)
+
+function abrirModalAprobar(id) {
+  modalAprobarId = id;
+  document.getElementById('apId').textContent = id;
+  document.getElementById('apComentario').value = '';
+  document.getElementById('apArchivos').value = '';
+  document.getElementById('apArchivosInfo').textContent = '';
+  document.getElementById('apBtnOk').disabled = false;
+  document.getElementById('apBtnOk').textContent = '✓ Aprobar y enviar';
+  document.getElementById('modalAprobar').classList.remove('hidden');
+}
+function cerrarModalAprobar() {
+  document.getElementById('modalAprobar').classList.add('hidden');
+  modalAprobarId = null;
+  cargarCots();
+}
+document.getElementById('apArchivos').addEventListener('change', function() {
+  const fs = [...this.files];
+  const total = fs.reduce((s,f)=>s+f.size, 0);
+  const grandes = fs.filter(f=>f.size > AP_MAX_FILE);
+  let msg = fs.length ? fs.length + ' archivo(s) · ' + (total/1048576).toFixed(1) + ' MB' : '';
+  if (grandes.length) msg += ' — ⚠ ' + grandes.map(f=>f.name).join(', ') + ' supera(n) 8 MB y no se subirá(n)';
+  if (total > AP_MAX_TOTAL) msg += ' — ⚠ el total supera 20 MB: achicá o subí después desde el portal';
+  document.getElementById('apArchivosInfo').textContent = msg;
+});
+function leerArchivoB64(f) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res({ filename: f.name, mimeType: f.type || 'application/octet-stream', base64Data: r.result.split(',')[1] });
+    r.onerror = rej;
+    r.readAsDataURL(f);
+  });
+}
+async function confirmarAprobacion() {
+  const id = modalAprobarId;
+  if (!id) return;
+  const btn = document.getElementById('apBtnOk');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  let adjuntos = [];
+  try {
+    const fs = [...document.getElementById('apArchivos').files].filter(f => f.size <= AP_MAX_FILE);
+    let total = 0;
+    for (const f of fs) {
+      if (total + f.size > AP_MAX_TOTAL) break;
+      adjuntos.push(await leerArchivoB64(f));
+      total += f.size;
+    }
+  } catch(e) { adjuntos = []; }
+  const r = await API.post({ action:'cotEstado', id, estado:'Aprobada',
+    comentarioVisita: document.getElementById('apComentario').value.trim(),
+    adjuntos, token: currentUser.token });
+  document.getElementById('modalAprobar').classList.add('hidden');
+  modalAprobarId = null;
+  if (!r.ok) { alert('Error: ' + r.error); cargarCots(); return; }
+  if (r.obraCodigo) alert('✓ ' + id + ' aprobada.\nSe creó la obra ' + r.obraCodigo + ' en el Portal (H3 y costo planificado precargados' + (r.adjuntos ? ', ' + r.adjuntos + ' archivo(s) subidos al Drive' : '') + ').\nAvisos enviados a Nicolás, Sandra y Paco.');
   if (r.obraError) alert('⚠ ' + r.obraError);
   cargarCots();
 }
