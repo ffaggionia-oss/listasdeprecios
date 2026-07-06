@@ -576,6 +576,7 @@ function instSnapshot() {
 function instCfg() {
   const I = cot.inst;
   if (!I || !I.on || !MAESTRO) return null;
+  const c = instCalc(); // costo planificado CONGELADO al momento de cotizar — viaja a la obra
   return {
     mt2: parseFloat(I.m2)||0, modo: I.modo,
     tipoColocacionId: I.tipoId || '',
@@ -583,7 +584,10 @@ function instCfg() {
     perifericos: (MAESTRO.perifericos||[]).filter(p=>(parseFloat(I.perif[p.id])||0)>0).map(p=>({ id:p.id, cantidad: parseFloat(I.perif[p.id])||0 })),
     escaladores: (MAESTRO.escaladores||[]).filter(e=>I.esc[e.id]).map(e=>({ id:e.id, aplica:true })),
     reductores: (MAESTRO.reductores||[]).filter(r=>I.red[r.id]).map(r=>({ id:r.id, aplica:true })),
-    fiscalIncluido: !!I.fiscal, margen: I.margen, segmentoId: I.segId || ''
+    fiscalIncluido: !!I.fiscal, margen: I.margen, segmentoId: I.segId || '',
+    costoPlan: { matsM2:c.matsM2, perifTotal:c.perifTotal, moM2:c.moM2, fiscalTotal:c.fiscalTotal,
+      costoM2:c.costoM2, costoTotal:c.costoTotal, precioM2:c.precioM2, precioTotal:c.precioTotal,
+      gananciaNominal:c.rent, margen:c.mg }
   };
 }
 // Reconstruye el estado desde una config guardada (por IDs)
@@ -752,7 +756,11 @@ function instRecalc(skipCart) {
   (MAESTRO.segmentos||[]).forEach(s=>{
     const el=document.getElementById('instSegP-'+s.id);
     const mgS = parseFloat(s.margen)||0;
-    if (el) el.textContent = 'USD ' + fmt(mgS<1 ? c.costoM2/(1-mgS) : c.costoM2) + '/m²';
+    if (el) {
+      const pM2 = mgS<1 ? c.costoM2/(1-mgS) : c.costoM2;
+      const gan = (pM2 - c.costoM2) * c.m2; // ganancia nominal del bloque
+      el.innerHTML = 'USD ' + fmt(pM2) + '/m²' + (c.m2>0 ? '<br><span style="color:#1a7f37">+ USD ' + fmt(gan) + '</span>' : '');
+    }
   });
   // resumen interno
   const descPct = Math.min(Math.max(parseFloat(document.getElementById('inDesc').value)||0,0),MAX_DESC);
@@ -764,8 +772,8 @@ function instRecalc(skipCart) {
     <div class="tot-line"><span>Periféricos x m² (total USD ${fmt(c.perifTotal)})</span><span>USD ${fmt(c.perifM2)}</span></div>
     <div class="tot-line"><span>Mano de obra x m² (dif. +${Math.round(c.amp*100)}% / vol. ${Math.round(c.red*100)}%)</span><span>USD ${fmt(c.moM2)}</span></div>
     <div class="tot-line"><span>Fiscal de obra${c.fiscalTotal>0?' (total USD '+fmt(c.fiscalTotal)+')':''}</span><span>USD ${fmt(c.fiscalM2)}</span></div>
-    <div class="tot-line big" style="font-size:13px;"><span>COSTO</span><span>USD ${fmt(c.costoM2)}/m² · USD ${fmt(c.costoTotal)} obra</span></div>
-    <div class="tot-line"><span>Margen ${segNombre} (${Math.round(c.mg*100)}% s/precio)</span><span>USD ${fmt(c.rent)}</span></div>
+    <div class="tot-line big" style="font-size:13px;"><span>COSTO PLANIFICADO</span><span>USD ${fmt(c.costoM2)}/m² · USD ${fmt(c.costoTotal)} obra</span></div>
+    <div class="tot-line"><span>Ganancia nominal — margen ${segNombre} (${Math.round(c.mg*100)}% s/precio)</span><span style="color:#1a7f37">+ USD ${fmt(c.rent)}</span></div>
     <div class="tot-line big" style="font-size:13px;color:#C9A227;"><span>PRECIO INSTALACIÓN</span><span>USD ${fmt(c.precioM2)}/m² · USD ${fmt(c.precioTotal)} obra</span></div>
     ${descPct>0 ? '<div class="tot-line"><span>Rentabilidad real con descuento de cierre '+descPct+'%</span><span>USD '+fmt(rentReal)+'</span></div>' : ''}`;
   const warns=[];
@@ -1272,10 +1280,17 @@ async function abrirCot(id, duplicar) {
 }
 
 async function cambiarEstado(id, estado) {
-  if (estado === 'Aprobada' && !confirm('¿Aprobar ' + id + '? Se crea automáticamente la obra en el Portal de Obras con la instalación precargada.')) { cargarCots(); return; }
+  if (estado === 'Aprobada') {
+    const cRef = (COTS || []).find(x => x.id === id);
+    const msg = (cRef && cRef.tieneInst)
+      ? '¿Aprobar ' + id + '? Se crea automáticamente la obra en el Portal de Obras con la instalación y el costo planificado precargados.'
+      : '¿Aprobar ' + id + '? Es solo material: se envía el pedido aprobado por email a Nicolás y Sandra' + (currentUser.rol !== 'gerencia' ? ' y a Franco' : '') + '.';
+    if (!confirm(msg)) { cargarCots(); return; }
+  }
   const r = await API.post({ action:'cotEstado', id, estado, token: currentUser.token });
   if (!r.ok) { alert('Error: ' + r.error); cargarCots(); return; }
-  if (r.obraCodigo) alert('✓ ' + id + ' aprobada.\nSe creó la obra ' + r.obraCodigo + ' en el Portal de Obras con el H3 precargado.');
+  if (r.obraCodigo) alert('✓ ' + id + ' aprobada.\nSe creó la obra ' + r.obraCodigo + ' en el Portal de Obras con el H3 y el costo planificado precargados.');
+  if (r.mailAprobada) alert('✓ ' + id + ' aprobada.\nPedido de material enviado por email a Nicolás y Sandra.');
   if (r.obraError) alert('⚠ ' + r.obraError);
   cargarCots();
 }
