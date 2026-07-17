@@ -301,6 +301,11 @@
         <div id="instTipos"></div>
 
         <div class="inst-sec-t">Materiales de instalación <span style="font-size:11px;color:#999;font-weight:400">(tildá lo que incluye — cantidades calculadas por m²)</span></div>
+        <div style="margin:4px 0 10px;font-size:12.5px;display:flex;align-items:center;gap:8px;">
+          <span>Desperdicio de material:</span>
+          <input type="number" class="mini" id="instDesperdicio" min="0" max="100" step="any" placeholder="0" style="width:80px" oninput="instSetDesperdicio(this.value)"> %
+          <span style="font-size:11px;color:#999;">se suma a la cantidad y al costo de los materiales tildados</span>
+        </div>
         <div id="instMats"></div>
 
         <div class="inst-sec-t">Periféricos y servicios (cantidades por obra)</div>
@@ -488,8 +493,8 @@ let D = [];  // se carga en vivo desde el Sheet de precios (getProductos)
 let MAESTRO = null; // {tipos, materiales, perifericos, escaladores, reductores, segmentos?}
 
 function instDefault() {
-  return { on:false, m2:0, modo:'sep', targetK:0, tipoId:'', mats:{}, perif:{}, esc:{}, red:{},
-    fiscal:true, margen:0.40, segId:'' };
+  return { on:false, m2:0, modo:'sep', targetK:0, tiposSel:{}, mats:{}, perif:{}, esc:{}, red:{},
+    fiscal:true, margen:0.40, segId:'', desperdicio:0 };
 }
 function instEnsure() { if (!cot.inst) cot.inst = instDefault(); return cot.inst; }
 
@@ -527,17 +532,20 @@ function instAutoFlags() {
 function instCalc() {
   const I = instEnsure();
   const m2 = parseFloat(I.m2)||0;
-  if (!MAESTRO) return { m2, matsM2:0, perifTotal:0, perifM2:0, moM2:0, amp:0, red:0, moTotal:0, fiscalTotal:0, fiscalM2:0, costoM2:0, costoTotal:0, mg:0, precioM2:0, precioTotal:0, rent:0 };
+  if (!MAESTRO) return { m2, matsM2:0, matsM2Base:0, desperdicioPct:0, perifTotal:0, perifM2:0, moM2:0, amp:0, red:0, moTotal:0, fiscalTotal:0, fiscalM2:0, costoM2:0, costoTotal:0, mg:0, precioM2:0, precioTotal:0, rent:0 };
 
-  const matsM2 = (MAESTRO.materiales||[]).reduce((s,m)=> I.mats[m.id] ? s + (parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0) : s, 0);
+  const desperdicioPct = Math.min(Math.max(parseFloat(I.desperdicio)||0, 0), 100);
+  const matsM2Base = (MAESTRO.materiales||[]).reduce((s,m)=> I.mats[m.id] ? s + (parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0) : s, 0);
+  const matsM2 = matsM2Base * (1 + desperdicioPct/100);
   const perifTotal = (MAESTRO.perifericos||[]).reduce((s,p)=>{
     const cant = parseFloat(I.perif[p.id])||0;
     return s + cant*(parseFloat(p.costoUn)||0);
   }, 0);
   const perifM2 = m2>0 ? perifTotal/m2 : 0;
 
-  const tipo = (MAESTRO.tipos||[]).find(t=>t.id===I.tipoId);
-  const moBase = tipo ? (parseFloat(tipo.costoMt2)||0) : 0;
+  // Tipo de colocación — se puede elegir más de uno; se suman los costos x m² del Maestro
+  const tiposSeleccionados = (MAESTRO.tipos||[]).filter(t=>I.tiposSel[t.id]);
+  const moBase = tiposSeleccionados.reduce((s,t)=> s + (parseFloat(t.costoMt2)||0), 0);
   let amp = (MAESTRO.escaladores||[]).reduce((s,e)=> I.esc[e.id] ? s + (parseFloat(e.pct)||0) : s, 0);
   amp = Math.min(amp, 0.40);
   const red = (MAESTRO.reductores||[]).reduce((s,r)=> I.red[r.id] ? s + (parseFloat(r.pct)||0) : s, 0);
@@ -552,7 +560,7 @@ function instCalc() {
   const mg = Math.min(Math.max(parseFloat(I.margen)||0, 0), 0.9);
   const precioM2 = mg<1 ? costoM2/(1-mg) : costoM2;
   const precioTotal = precioM2*m2;
-  return { m2, matsM2, perifTotal, perifM2, moBase, amp, red, moM2, moTotal,
+  return { m2, matsM2, matsM2Base, desperdicioPct, perifTotal, perifM2, moBase, amp, red, moM2, moTotal,
            fiscalTotal, fiscalM2, costoM2, costoTotal, mg, precioM2, precioTotal,
            rent: precioTotal - costoTotal };
 }
@@ -583,14 +591,14 @@ function instSnapshot() {
   const I = cot.inst;
   if (!I || !I.on || !MAESTRO) return null;
   const c = instCalc();
-  const tipo = (MAESTRO.tipos||[]).find(t=>t.id===I.tipoId);
+  const tiposSeleccionados = (MAESTRO.tipos||[]).filter(t=>I.tiposSel[t.id]);
   const mats = (MAESTRO.materiales||[]).filter(m=>I.mats[m.id]).map(m=>m.insumo);
   const perif = (MAESTRO.perifericos||[]).map(p=>{
     const cant = parseFloat(I.perif[p.id])||0;
     return cant>0 ? p.insumo + ' (' + cant + (p.unidad ? ' ' + String(p.unidad).toLowerCase() : '') + ')' : null;
   }).filter(Boolean);
-  return { on:true, m2:c.m2, modo:I.modo, tipos: tipo?[tipo.tipo]:[], mats, perif, fiscal:!!I.fiscal,
-    equipo:'colocadores', precioM2:c.precioM2, precioTotal:c.precioTotal };
+  return { on:true, m2:c.m2, modo:I.modo, tipos: tiposSeleccionados.map(t=>t.tipo), mats, perif, fiscal:!!I.fiscal,
+    desperdicio: c.desperdicioPct, equipo:'colocadores', precioM2:c.precioM2, precioTotal:c.precioTotal };
 }
 
 // Config por IDs del Maestro — es lo que se guarda y lo que precarga la obra al aprobar
@@ -598,15 +606,18 @@ function instCfg() {
   const I = cot.inst;
   if (!I || !I.on || !MAESTRO) return null;
   const c = instCalc(); // costo planificado CONGELADO al momento de cotizar — viaja a la obra
+  const tiposSeleccionados = (MAESTRO.tipos||[]).filter(t=>I.tiposSel[t.id]);
   return {
     mt2: parseFloat(I.m2)||0, modo: I.modo,
-    tipoColocacionId: I.tipoId || '',
+    tipoColocacionIds: tiposSeleccionados.map(t=>t.id),
+    tipoColocacionId: tiposSeleccionados[0] ? tiposSeleccionados[0].id : '', // compat: primer tipo elegido
     materiales: (MAESTRO.materiales||[]).filter(m=>I.mats[m.id]).map(m=>({ id:m.id, incluye:true })),
+    desperdicio: c.desperdicioPct,
     perifericos: (MAESTRO.perifericos||[]).filter(p=>(parseFloat(I.perif[p.id])||0)>0).map(p=>({ id:p.id, cantidad: parseFloat(I.perif[p.id])||0 })),
     escaladores: (MAESTRO.escaladores||[]).filter(e=>I.esc[e.id]).map(e=>({ id:e.id, aplica:true })),
     reductores: (MAESTRO.reductores||[]).filter(r=>I.red[r.id]).map(r=>({ id:r.id, aplica:true })),
     fiscalIncluido: !!I.fiscal, margen: I.margen, segmentoId: I.segId || '',
-    costoPlan: { matsM2:c.matsM2, perifTotal:c.perifTotal, moM2:c.moM2, fiscalTotal:c.fiscalTotal,
+    costoPlan: { matsM2:c.matsM2, matsM2Base:c.matsM2Base, perifTotal:c.perifTotal, moM2:c.moM2, fiscalTotal:c.fiscalTotal,
       costoM2:c.costoM2, costoTotal:c.costoTotal, precioM2:c.precioM2, precioTotal:c.precioTotal,
       gananciaNominal:c.rent, margen:c.mg }
   };
@@ -618,8 +629,12 @@ function instDesdeCfg(cfg) {
   I.on = true;
   I.m2 = cfg.mt2 || 0;
   I.modo = cfg.modo || 'sep';
-  I.tipoId = cfg.tipoColocacionId || '';
+  // Compat: cotizaciones viejas guardaban un solo tipoColocacionId (string)
+  const ids = Array.isArray(cfg.tipoColocacionIds) ? cfg.tipoColocacionIds
+    : (cfg.tipoColocacionId ? [cfg.tipoColocacionId] : []);
+  ids.forEach(id=>{ I.tiposSel[id] = true; });
   (cfg.materiales||[]).forEach(m=>{ if(m.incluye) I.mats[m.id]=true; });
+  I.desperdicio = parseFloat(cfg.desperdicio) || 0;
   (cfg.perifericos||[]).forEach(p=>{ I.perif[p.id]=p.cantidad; });
   (cfg.escaladores||[]).forEach(e=>{ if(e.aplica) I.esc[e.id]=true; });
   (cfg.reductores||[]).forEach(r=>{ if(r.aplica) I.red[r.id]=true; });
@@ -640,7 +655,12 @@ function instToggle(on) {
   renderCart();
 }
 function instSet(k,v) { instEnsure()[k]=v; if (k==='modo') instTargetVis(); instRecalc(); }
-function instSetTipo(id) { instEnsure().tipoId = id; instRecalc(); }
+function instToggleTipo(id, checked) { instEnsure().tiposSel[id] = checked; instRecalc(); }
+function instSetDesperdicio(v) {
+  const I = instEnsure();
+  I.desperdicio = Math.min(Math.max(parseFloat(v)||0, 0), 100);
+  instRecalc();
+}
 function instSetMargen(v) {
   const I=instEnsure(); I.margen=Math.min(Math.max((parseFloat(v)||0)/100,0),0.9); I.segId='';
   document.querySelectorAll('#instSegs .seg-btn').forEach(b=>b.classList.remove('active'));
@@ -683,23 +703,27 @@ function buildInstUI() {
   document.getElementById('instOff').classList.toggle('hidden', I.on);
   document.getElementById('instBody').classList.toggle('hidden', !I.on);
   if (!I.on) return;
-  if (!I.tipoId && (MAESTRO.tipos||[]).length) I.tipoId = (MAESTRO.tipos[1]||MAESTRO.tipos[0]).id;
+  if (!Object.keys(I.tiposSel).some(k=>I.tiposSel[k]) && (MAESTRO.tipos||[]).length) {
+    const def = MAESTRO.tipos[1]||MAESTRO.tipos[0];
+    I.tiposSel[def.id] = true;
+  }
   document.getElementById('instM2').value = I.m2||'';
   document.getElementById('instModo').value = I.modo||'sep';
   document.getElementById('instFiscal').checked = !!I.fiscal;
   document.getElementById('instMargen').value = Math.round((I.margen||0)*100);
   instTargetVis();
 
-  // Tipo de colocación — UNO solo (radio), costo del Maestro, solo lectura
+  // Tipo de colocación — se puede elegir más de uno (checkbox); se suman los costos del Maestro
   document.getElementById('instTipos').innerHTML = (MAESTRO.tipos||[]).map(t=>`
     <div class="inst-row">
-      <label><input type="radio" name="instTipoR" value="${t.id}" ${I.tipoId===t.id?'checked':''}
-        onchange="instSetTipo('${t.id}')"> ${t.tipo}</label>
+      <label><input type="checkbox" ${I.tiposSel[t.id]?'checked':''}
+        onchange="instToggleTipo('${t.id}',this.checked)"> ${t.tipo}</label>
       <span class="calc">USD ${fmt(parseFloat(t.costoMt2)||0)}/m²${t.rendimiento?' · '+t.rendimiento+' m²/día':''}</span>
     </div>`).join('');
 
   // Materiales por categoría — consumo y costo del Maestro (solo lectura),
-  // con la CANTIDAD TOTAL calculada para los m² de la obra
+  // con la CANTIDAD TOTAL calculada para los m² de la obra (incluye desperdicio)
+  document.getElementById('instDesperdicio').value = I.desperdicio||'';
   const cats=[...new Set((MAESTRO.materiales||[]).map(m=>m.categoria||'Otros'))];
   document.getElementById('instMats').innerHTML = cats.map(cat=>{
     const rows = (MAESTRO.materiales||[]).filter(m=>(m.categoria||'Otros')===cat).map(m=>`
@@ -757,11 +781,12 @@ function instRecalc(skipCart) {
   if (!I.on || !MAESTRO) { if (!skipCart) renderCart(); return; }
   const c = instCalc();
   const m2 = c.m2;
+  const dFactor = 1 + (c.desperdicioPct||0)/100;
   (MAESTRO.materiales||[]).forEach(m=>{
     const elC=document.getElementById('instMatC-'+m.id);
-    if (elC) elC.textContent = 'USD ' + fmt((parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0));
+    if (elC) elC.textContent = 'USD ' + fmt((parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0)*dFactor) + (c.desperdicioPct>0 ? ' *' : '');
     const elQ=document.getElementById('instMatQ-'+m.id);
-    if (elQ) elQ.textContent = (I.mats[m.id] && m2>0) ? ('≈ ' + fmt((parseFloat(m.unMt2)||0)*m2, 1) + ' ' + (m.unidad||'un')) : '—';
+    if (elQ) elQ.textContent = (I.mats[m.id] && m2>0) ? ('≈ ' + fmt((parseFloat(m.unMt2)||0)*m2*dFactor, 1) + ' ' + (m.unidad||'un') + (c.desperdicioPct>0 ? ' *' : '')) : '—';
   });
   const cats={};
   (MAESTRO.materiales||[]).forEach(m=>{ if (I.mats[m.id]) { const cat=m.categoria||'Otros'; cats[cat]=(cats[cat]||0)+1; } });
@@ -789,7 +814,7 @@ function instRecalc(skipCart) {
   const segNombre = I.segId ? (((MAESTRO.segmentos||[]).find(s=>s.id===I.segId)||{}).nombre||'') : 'manual';
   document.getElementById('instResumen').innerHTML = `
     <div class="interno-title">Instalación — solo interno, no va al cliente</div>
-    <div class="tot-line"><span>Materiales x m²</span><span>USD ${fmt(c.matsM2)}</span></div>
+    <div class="tot-line"><span>Materiales x m²${c.desperdicioPct>0?' (incluye '+Math.round(c.desperdicioPct)+'% desperdicio)':''}</span><span>USD ${fmt(c.matsM2)}</span></div>
     <div class="tot-line"><span>Periféricos x m² (total USD ${fmt(c.perifTotal)})</span><span>USD ${fmt(c.perifM2)}</span></div>
     <div class="tot-line"><span>Mano de obra x m² (dif. +${Math.round(c.amp*100)}% / vol. ${Math.round(c.red*100)}%)</span><span>USD ${fmt(c.moM2)}</span></div>
     <div class="tot-line"><span>Fiscal de obra${c.fiscalTotal>0?' (total USD '+fmt(c.fiscalTotal)+')':''}</span><span>USD ${fmt(c.fiscalM2)}</span></div>
@@ -799,7 +824,7 @@ function instRecalc(skipCart) {
     ${descPct>0 ? '<div class="tot-line"><span>Rentabilidad real con descuento de cierre '+descPct+'%</span><span>USD '+fmt(rentReal)+'</span></div>' : ''}`;
   const warns=[];
   if (c.m2<=0) warns.push('Cargá los m² a instalar.');
-  if (!I.tipoId) warns.push('Elegí el tipo de colocación.');
+  if (!Object.keys(I.tiposSel).some(k=>I.tiposSel[k])) warns.push('Elegí al menos un tipo de colocación.');
   if (I.modo==='int' && !cot.items.length) warns.push('Modo integrado: agregá el producto al carrito primero.');
   document.getElementById('instWarn').innerHTML = warns.length ? '<div class="inst-warn">⚠ '+warns.join(' · ')+'</div>' : '';
   if (!skipCart) renderCart();
@@ -811,7 +836,7 @@ function instIncludeHtml(I) {
   const li = [];
   if (I.tipos && I.tipos.length) li.push('<b>Mano de obra:</b> ' + I.tipos.join(' + ') + ' — equipo de ' + (I.equipo||'colocadores') + '.');
   if (I.fiscal) li.push('<b>Supervisión técnica de obra</b> (fiscal técnico).');
-  if (I.mats && I.mats.length) li.push('<b>Materiales de instalación:</b> ' + I.mats.join(', ') + '.');
+  if (I.mats && I.mats.length) li.push('<b>Materiales de instalación:</b> ' + I.mats.join(', ') + (I.desperdicio>0 ? ' (incluye ' + Math.round(I.desperdicio) + '% de desperdicio)' : '') + '.');
   if (I.perif && I.perif.length) li.push('<b>Servicios:</b> ' + I.perif.join(', ') + '.');
   if (!li.length) return '';
   return `
