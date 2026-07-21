@@ -301,11 +301,6 @@
         <div id="instTipos"></div>
 
         <div class="inst-sec-t">Materiales de instalación <span style="font-size:11px;color:#999;font-weight:400">(tildá lo que incluye — cantidades calculadas por m²)</span></div>
-        <div style="margin:4px 0 10px;font-size:12.5px;display:flex;align-items:center;gap:8px;">
-          <span>Desperdicio de material:</span>
-          <input type="number" class="mini" id="instDesperdicio" min="0" max="100" step="any" placeholder="0" style="width:80px" oninput="instSetDesperdicio(this.value)"> %
-          <span style="font-size:11px;color:#999;">se suma a la cantidad y al costo de los materiales tildados</span>
-        </div>
         <div id="instMats"></div>
 
         <div class="inst-sec-t">Periféricos y servicios (cantidades por obra)</div>
@@ -341,6 +336,10 @@
 
     <div class="card">
       <h3>Detalle de la cotización</h3>
+      <div style="margin-bottom:10px;">
+        <label>Desperdicio de madera <span style="font-size:11px;color:#999;font-weight:400">(recortes — se suma a la cantidad y al precio de cada producto de madera del carrito)</span></label>
+        <input type="number" id="inDespMadera" min="0" max="100" step="0.5" value="0" style="width:100px" oninput="setDespMadera(this.value)"> %
+      </div>
       <table class="cart">
         <thead><tr><th>Producto</th><th>Medidas</th><th class="num">Cantidad</th><th class="num">Precio unit.</th><th class="num">Subtotal</th><th></th></tr></thead>
         <tbody id="cartBody"><tr><td colspan="6" style="color:#aaa;padding:16px;">Todavía no agregaste productos.</td></tr></tbody>
@@ -494,9 +493,23 @@ let MAESTRO = null; // {tipos, materiales, perifericos, escaladores, reductores,
 
 function instDefault() {
   return { on:false, m2:0, modo:'sep', targetK:0, tiposSel:{}, mats:{}, perif:{}, esc:{}, red:{},
-    fiscal:true, margen:0.40, segId:'', desperdicio:0 };
+    fiscal:true, margen:0.40, segId:'' };
 }
-function instEnsure() { if (!cot.inst) cot.inst = instDefault(); return cot.inst; }
+// Corrige objetos cot.inst viejos (guardados en el borrador local del navegador
+// ANTES de que "tipo de colocación" pasara de radio único a checkbox múltiple).
+// Sin esto, un borrador viejo sin `tiposSel` rompe buildInstUI() a mitad de camino
+// (Object.keys(undefined) tira TypeError) y deja todo lo de abajo — materiales,
+// periféricos, dificultad, márgenes — sin dibujarse, aunque el bloque de arriba
+// (M², modo, producto destino) sí se ve porque se completa antes del error.
+function instNormalize(I) {
+  if (!I) return I;
+  if (!I.tiposSel || typeof I.tiposSel !== 'object') {
+    I.tiposSel = {};
+    if (I.tipoId) I.tiposSel[I.tipoId] = true; // recupera la elección vieja (radio único) si existía
+  }
+  return I;
+}
+function instEnsure() { if (!cot.inst) cot.inst = instDefault(); return instNormalize(cot.inst); }
 
 // --- reglas automáticas por m² leídas del texto de la condición del Maestro ---
 // escaladores "Obra < 20 mt²" / "Obra < 40 mt²" → tramos; reductores "Obra 200–300 mt²" → rangos
@@ -532,11 +545,9 @@ function instAutoFlags() {
 function instCalc() {
   const I = instEnsure();
   const m2 = parseFloat(I.m2)||0;
-  if (!MAESTRO) return { m2, matsM2:0, matsM2Base:0, desperdicioPct:0, perifTotal:0, perifM2:0, moM2:0, amp:0, red:0, moTotal:0, fiscalTotal:0, fiscalM2:0, costoM2:0, costoTotal:0, mg:0, precioM2:0, precioTotal:0, rent:0 };
+  if (!MAESTRO) return { m2, matsM2:0, perifTotal:0, perifM2:0, moM2:0, amp:0, red:0, moTotal:0, fiscalTotal:0, fiscalM2:0, costoM2:0, costoTotal:0, mg:0, precioM2:0, precioTotal:0, rent:0 };
 
-  const desperdicioPct = Math.min(Math.max(parseFloat(I.desperdicio)||0, 0), 100);
-  const matsM2Base = (MAESTRO.materiales||[]).reduce((s,m)=> I.mats[m.id] ? s + (parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0) : s, 0);
-  const matsM2 = matsM2Base * (1 + desperdicioPct/100);
+  const matsM2 = (MAESTRO.materiales||[]).reduce((s,m)=> I.mats[m.id] ? s + (parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0) : s, 0);
   const perifTotal = (MAESTRO.perifericos||[]).reduce((s,p)=>{
     const cant = parseFloat(I.perif[p.id])||0;
     return s + cant*(parseFloat(p.costoUn)||0);
@@ -560,7 +571,7 @@ function instCalc() {
   const mg = Math.min(Math.max(parseFloat(I.margen)||0, 0), 0.9);
   const precioM2 = mg<1 ? costoM2/(1-mg) : costoM2;
   const precioTotal = precioM2*m2;
-  return { m2, matsM2, matsM2Base, desperdicioPct, perifTotal, perifM2, moBase, amp, red, moM2, moTotal,
+  return { m2, matsM2, perifTotal, perifM2, moBase, amp, red, moM2, moTotal,
            fiscalTotal, fiscalM2, costoM2, costoTotal, mg, precioM2, precioTotal,
            rent: precioTotal - costoTotal };
 }
@@ -588,7 +599,7 @@ function itemsView() {
 
 // Snapshot con NOMBRES para el PDF (sin costos internos)
 function instSnapshot() {
-  const I = cot.inst;
+  const I = instNormalize(cot.inst);
   if (!I || !I.on || !MAESTRO) return null;
   const c = instCalc();
   const tiposSeleccionados = (MAESTRO.tipos||[]).filter(t=>I.tiposSel[t.id]);
@@ -598,12 +609,12 @@ function instSnapshot() {
     return cant>0 ? p.insumo + ' (' + cant + (p.unidad ? ' ' + String(p.unidad).toLowerCase() : '') + ')' : null;
   }).filter(Boolean);
   return { on:true, m2:c.m2, modo:I.modo, tipos: tiposSeleccionados.map(t=>t.tipo), mats, perif, fiscal:!!I.fiscal,
-    desperdicio: c.desperdicioPct, equipo:'colocadores', precioM2:c.precioM2, precioTotal:c.precioTotal };
+    equipo:'colocadores', precioM2:c.precioM2, precioTotal:c.precioTotal };
 }
 
 // Config por IDs del Maestro — es lo que se guarda y lo que precarga la obra al aprobar
 function instCfg() {
-  const I = cot.inst;
+  const I = instNormalize(cot.inst);
   if (!I || !I.on || !MAESTRO) return null;
   const c = instCalc(); // costo planificado CONGELADO al momento de cotizar — viaja a la obra
   const tiposSeleccionados = (MAESTRO.tipos||[]).filter(t=>I.tiposSel[t.id]);
@@ -612,12 +623,11 @@ function instCfg() {
     tipoColocacionIds: tiposSeleccionados.map(t=>t.id),
     tipoColocacionId: tiposSeleccionados[0] ? tiposSeleccionados[0].id : '', // compat: primer tipo elegido
     materiales: (MAESTRO.materiales||[]).filter(m=>I.mats[m.id]).map(m=>({ id:m.id, incluye:true })),
-    desperdicio: c.desperdicioPct,
     perifericos: (MAESTRO.perifericos||[]).filter(p=>(parseFloat(I.perif[p.id])||0)>0).map(p=>({ id:p.id, cantidad: parseFloat(I.perif[p.id])||0 })),
     escaladores: (MAESTRO.escaladores||[]).filter(e=>I.esc[e.id]).map(e=>({ id:e.id, aplica:true })),
     reductores: (MAESTRO.reductores||[]).filter(r=>I.red[r.id]).map(r=>({ id:r.id, aplica:true })),
     fiscalIncluido: !!I.fiscal, margen: I.margen, segmentoId: I.segId || '',
-    costoPlan: { matsM2:c.matsM2, matsM2Base:c.matsM2Base, perifTotal:c.perifTotal, moM2:c.moM2, fiscalTotal:c.fiscalTotal,
+    costoPlan: { matsM2:c.matsM2, perifTotal:c.perifTotal, moM2:c.moM2, fiscalTotal:c.fiscalTotal,
       costoM2:c.costoM2, costoTotal:c.costoTotal, precioM2:c.precioM2, precioTotal:c.precioTotal,
       gananciaNominal:c.rent, margen:c.mg }
   };
@@ -634,7 +644,6 @@ function instDesdeCfg(cfg) {
     : (cfg.tipoColocacionId ? [cfg.tipoColocacionId] : []);
   ids.forEach(id=>{ I.tiposSel[id] = true; });
   (cfg.materiales||[]).forEach(m=>{ if(m.incluye) I.mats[m.id]=true; });
-  I.desperdicio = parseFloat(cfg.desperdicio) || 0;
   (cfg.perifericos||[]).forEach(p=>{ I.perif[p.id]=p.cantidad; });
   (cfg.escaladores||[]).forEach(e=>{ if(e.aplica) I.esc[e.id]=true; });
   (cfg.reductores||[]).forEach(r=>{ if(r.aplica) I.red[r.id]=true; });
@@ -656,11 +665,6 @@ function instToggle(on) {
 }
 function instSet(k,v) { instEnsure()[k]=v; if (k==='modo') instTargetVis(); instRecalc(); }
 function instToggleTipo(id, checked) { instEnsure().tiposSel[id] = checked; instRecalc(); }
-function instSetDesperdicio(v) {
-  const I = instEnsure();
-  I.desperdicio = Math.min(Math.max(parseFloat(v)||0, 0), 100);
-  instRecalc();
-}
 function instSetMargen(v) {
   const I=instEnsure(); I.margen=Math.min(Math.max((parseFloat(v)||0)/100,0),0.9); I.segId='';
   document.querySelectorAll('#instSegs .seg-btn').forEach(b=>b.classList.remove('active'));
@@ -679,7 +683,9 @@ function instSetM2(v) {
   instRecalc();
 }
 function instM2DesdeCarrito(silencioso) {
-  const m2 = cot.items.filter(it=>it.u==='m²').reduce((s,it)=>s+(parseFloat(it.cant)||0),0);
+  // Usa el m² REAL (sin desperdicio de madera) — la mano de obra se paga por
+  // la superficie real a instalar, no por el material extra comprado por recortes.
+  const m2 = cot.items.filter(it=>it.u==='m²').reduce((s,it)=>s+(parseFloat(it.cantReal!==undefined?it.cantReal:it.cant)||0),0);
   if (!m2 && !silencioso) { alert('No hay productos en m² en el carrito.'); return; }
   document.getElementById('instM2').value = m2||'';
   instSetM2(m2);
@@ -690,7 +696,10 @@ function instTargetVis() {
   w.classList.toggle('hidden', I.modo!=='int');
   if (I.modo==='int') {
     const sel=document.getElementById('instTarget');
-    sel.innerHTML = cot.items.map((it,k)=>`<option value="${k}" ${k===I.targetK?'selected':''}>${it.desc} (${it.cant} ${it.u})</option>`).join('')
+    sel.innerHTML = cot.items.map((it,k)=>{
+      const cReal = it.cantReal!==undefined ? it.cantReal : it.cant;
+      return `<option value="${k}" ${k===I.targetK?'selected':''}>${it.desc} (${cReal} ${it.u})</option>`;
+    }).join('')
       || '<option value="0">— agregá productos al carrito —</option>';
   }
 }
@@ -722,8 +731,7 @@ function buildInstUI() {
     </div>`).join('');
 
   // Materiales por categoría — consumo y costo del Maestro (solo lectura),
-  // con la CANTIDAD TOTAL calculada para los m² de la obra (incluye desperdicio)
-  document.getElementById('instDesperdicio').value = I.desperdicio||'';
+  // con la CANTIDAD TOTAL calculada para los m² de la obra
   const cats=[...new Set((MAESTRO.materiales||[]).map(m=>m.categoria||'Otros'))];
   document.getElementById('instMats').innerHTML = cats.map(cat=>{
     const rows = (MAESTRO.materiales||[]).filter(m=>(m.categoria||'Otros')===cat).map(m=>`
@@ -781,12 +789,11 @@ function instRecalc(skipCart) {
   if (!I.on || !MAESTRO) { if (!skipCart) renderCart(); return; }
   const c = instCalc();
   const m2 = c.m2;
-  const dFactor = 1 + (c.desperdicioPct||0)/100;
   (MAESTRO.materiales||[]).forEach(m=>{
     const elC=document.getElementById('instMatC-'+m.id);
-    if (elC) elC.textContent = 'USD ' + fmt((parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0)*dFactor) + (c.desperdicioPct>0 ? ' *' : '');
+    if (elC) elC.textContent = 'USD ' + fmt((parseFloat(m.unMt2)||0)*(parseFloat(m.costoUn)||0));
     const elQ=document.getElementById('instMatQ-'+m.id);
-    if (elQ) elQ.textContent = (I.mats[m.id] && m2>0) ? ('≈ ' + fmt((parseFloat(m.unMt2)||0)*m2*dFactor, 1) + ' ' + (m.unidad||'un') + (c.desperdicioPct>0 ? ' *' : '')) : '—';
+    if (elQ) elQ.textContent = (I.mats[m.id] && m2>0) ? ('≈ ' + fmt((parseFloat(m.unMt2)||0)*m2, 1) + ' ' + (m.unidad||'un')) : '—';
   });
   const cats={};
   (MAESTRO.materiales||[]).forEach(m=>{ if (I.mats[m.id]) { const cat=m.categoria||'Otros'; cats[cat]=(cats[cat]||0)+1; } });
@@ -814,7 +821,7 @@ function instRecalc(skipCart) {
   const segNombre = I.segId ? (((MAESTRO.segmentos||[]).find(s=>s.id===I.segId)||{}).nombre||'') : 'manual';
   document.getElementById('instResumen').innerHTML = `
     <div class="interno-title">Instalación — solo interno, no va al cliente</div>
-    <div class="tot-line"><span>Materiales x m²${c.desperdicioPct>0?' (incluye '+Math.round(c.desperdicioPct)+'% desperdicio)':''}</span><span>USD ${fmt(c.matsM2)}</span></div>
+    <div class="tot-line"><span>Materiales x m²</span><span>USD ${fmt(c.matsM2)}</span></div>
     <div class="tot-line"><span>Periféricos x m² (total USD ${fmt(c.perifTotal)})</span><span>USD ${fmt(c.perifM2)}</span></div>
     <div class="tot-line"><span>Mano de obra x m² (dif. +${Math.round(c.amp*100)}% / vol. ${Math.round(c.red*100)}%)</span><span>USD ${fmt(c.moM2)}</span></div>
     <div class="tot-line"><span>Fiscal de obra${c.fiscalTotal>0?' (total USD '+fmt(c.fiscalTotal)+')':''}</span><span>USD ${fmt(c.fiscalM2)}</span></div>
@@ -836,7 +843,7 @@ function instIncludeHtml(I) {
   const li = [];
   if (I.tipos && I.tipos.length) li.push('<b>Mano de obra:</b> ' + I.tipos.join(' + ') + ' — equipo de ' + (I.equipo||'colocadores') + '.');
   if (I.fiscal) li.push('<b>Supervisión técnica de obra</b> (fiscal técnico).');
-  if (I.mats && I.mats.length) li.push('<b>Materiales de instalación:</b> ' + I.mats.join(', ') + (I.desperdicio>0 ? ' (incluye ' + Math.round(I.desperdicio) + '% de desperdicio)' : '') + '.');
+  if (I.mats && I.mats.length) li.push('<b>Materiales de instalación:</b> ' + I.mats.join(', ') + '.');
   if (I.perif && I.perif.length) li.push('<b>Servicios:</b> ' + I.perif.join(', ') + '.');
   if (!li.length) return '';
   return `
@@ -865,7 +872,7 @@ let COTS = [];
 let cot = nuevaCotObj();
 
 function nuevaCotObj() {
-  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, comisionArq:false, notas:'', inst: instDefault() };
+  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, notas:'', inst: instDefault() };
 }
 
 // ---------- Login ----------
@@ -962,14 +969,36 @@ function renderProdList() {
     </div>`).join('') || '<div style="padding:14px;color:#aaa;">Sin resultados</div>';
 }
 
+// Desperdicio de madera (recortes): 1 valor global por cotización, se le aplica a
+// TODOS los ítems del carrito (son todos madera — los materiales de instalación,
+// tornillos/clips/membrana/etc., son otra cosa y no llevan desperdicio).
+// it.cantReal = m²/ml/un reales que pidió el cliente (lo que se edita a mano)
+// it.desp = % de desperdicio vigente al momento de cargar/editar la línea
+// it.cant = cantidad FACTURADA (cantReal × (1+desp/100)) — es la que se usa en
+// todos los cálculos de precio existentes (subtotal, PDF, etc.) sin tocarlos.
+function recalcCantFact(it) {
+  const real = parseFloat(it.cantReal)||0;
+  const d = Math.min(Math.max(parseFloat(it.desp)||0, 0), 100);
+  it.cant = real * (1 + d/100);
+}
+function setDespMadera(v) {
+  const pct = Math.min(Math.max(parseFloat(v)||0, 0), 100);
+  cot.despMaderaPct = pct;
+  cot.items.forEach(it => { it.desp = pct; recalcCantFact(it); });
+  renderCart();
+}
+
 function agregarItem(i) {
   const p = D[i];
+  const despPct = cot.despMaderaPct || 0;
   const ex = cot.items.find(it => it.idx===i && !it.conClip);
-  if (ex && p.con_clip_a===undefined) { ex.cant += 1; renderCart(); return; }
-  cot.items.push({
+  if (ex && p.con_clip_a===undefined) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); renderCart(); return; }
+  const it = {
     idx:i, desc:`${p.madera} ${p.perfil}`, cat:p.cat, medidas:p.medidas, largos:p.largos,
-    u:p.u, precio:p.a, cant:1, conClip:false
-  });
+    u:p.u, precio:p.a, cantReal:1, desp:despPct, cant:1, conClip:false
+  };
+  recalcCantFact(it);
+  cot.items.push(it);
   renderCart();
 }
 
@@ -979,7 +1008,13 @@ function toggleClip(k) {
   it.precio = it.conClip ? p.con_clip_a : p.a;
   renderCart();
 }
-function setCant(k, v) { cot.items[k].cant = parseFloat(v)||0; renderCart(false); }
+function setCant(k, v) {
+  const it = cot.items[k];
+  it.cantReal = parseFloat(v)||0;
+  if (it.desp===undefined) it.desp = cot.despMaderaPct||0;
+  recalcCantFact(it);
+  renderCart(false);
+}
 function quitarItem(k) { cot.items.splice(k,1); renderCart(); }
 
 function capDesc() {
@@ -1020,10 +1055,12 @@ function renderCart(full) {
       const clipHtml = (p.con_clip_a!==undefined)
         ? `<div class="clip-toggle"><label style="display:inline;cursor:pointer;"><input type="checkbox" ${it.conClip?'checked':''} onchange="toggleClip(${k})" style="width:auto"> con clip</label></div>` : '';
       const mergedTag = it._instMerged ? '<div style="font-size:10px;color:#C9A227;font-weight:800">🔧 instalación integrada al precio</div>' : '';
+      const cantReal = it.cantReal!==undefined ? it.cantReal : it.cant;
+      const despHtml = (it.desp>0) ? `<div style="font-size:10px;color:#999;">+${it.desp}% desperdicio → ${fmt(it.cant, decFor(it.u))} ${it.u} facturados</div>` : '';
       return `<tr${it._instMerged?' style="background:#FBF3DC;"':''}>
         <td><b>${it.desc}</b><div style="font-size:11px;color:#888">${it.cat}</div>${clipHtml}${mergedTag}</td>
         <td>${it.medidas}</td>
-        <td class="num"><input class="qty-input" type="number" min="0" step="any" value="${it.cant}" onchange="setCant(${k},this.value)"> <small>${it.u}</small></td>
+        <td class="num"><input class="qty-input" type="number" min="0" step="any" value="${cantReal}" onchange="setCant(${k},this.value)"> <small>${it.u}</small>${despHtml}</td>
         <td class="num">USD ${fmt(it.precio, decFor(it.u))}</td>
         <td class="num"><b>USD ${fmt(it.precio*it.cant)}</b></td>
         <td><span class="rm" onclick="quitarItem(${k})">✕</span></td>
@@ -1051,6 +1088,7 @@ function renderCart(full) {
 // Borrador local: si se corta internet o se cierra la pestaña, no se pierde lo cargado
 function guardarBorradorLocal() {
   cot.descPct = parseFloat(document.getElementById('inDesc').value)||0;
+  cot.despMaderaPct = parseFloat(document.getElementById('inDespMadera').value)||0;
   cot.comisionArq = document.getElementById('inArq').checked;
   cot.notas = document.getElementById('inNotas').value;
   cot.vendedor = document.getElementById('inVend').value;
@@ -1071,6 +1109,7 @@ function restaurarBorradorLocal() {
     if (d && d.items && d.items.length) {
       cot = d;
       document.getElementById('inDesc').value = cot.descPct||0;
+      document.getElementById('inDespMadera').value = cot.despMaderaPct||0;
       document.getElementById('inArq').checked = !!cot.comisionArq;
       document.getElementById('inNotas').value = cot.notas||'';
       document.getElementById('inVend').value = cot.vendedor || 'Franco Faggioni';
@@ -1100,6 +1139,7 @@ function setPdfFields(c) {
 function nuevaCot() {
   cot = nuevaCotObj();
   document.getElementById('inDesc').value = 0;
+  document.getElementById('inDespMadera').value = 0;
   document.getElementById('inArq').checked = false;
   document.getElementById('inNotas').value = '';
   const vd = (currentUser && currentUser.usuario === 'Franco') ? 'Franco Faggioni' : 'Christian Holler';
@@ -1129,13 +1169,13 @@ async function guardarCot() {
       action:'cotSave', token: currentUser.token,
       id: cot.id, estado: cot.estado,
       clienteId: cliente.id, clienteNombre: cliente.razonSocial,
-      items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, cant:it.cant, conClip:it.conClip})),
+      items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip})),
       inst: instSnapshot(),
       instCfg: instCfg(),
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
       padreId: cot.padreId || '',
-      descPct: cot.descPct, comisionArq: cot.comisionArq, notas: cot.notas,
+      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, notas: cot.notas,
       condPago: cot.condPago, validez: cot.validez, lugarEnt: cot.lugarEnt,
       plazoEnt: cot.plazoEnt, transEnt: cot.transEnt, ivaPct: cot.ivaPct, tc: cot.tc
     });
@@ -1286,6 +1326,7 @@ async function abrirCot(id, duplicar) {
   cot.estado = duplicar ? 'Borrador' : c.estado;
   cot.notas = c.notas;
   cot.descPct = c.descPct;
+  cot.despMaderaPct = c.despMaderaPct || 0;
   cot.comisionArq = c.comisionArq;
   cot.clienteId = c.clienteId;
   cot.vendedor = c.vendedor;
@@ -1306,9 +1347,11 @@ async function abrirCot(id, duplicar) {
       const pi = (c.inst.precioTotal||0) / (parseFloat(it.cant)||1);
       precio = Math.max(0, precio - pi);
     }
-    return { idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, cant:it.cant, conClip:!!it.conClip };
+    return { idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, cant:it.cant,
+      cantReal: (it.cantReal!==undefined ? it.cantReal : it.cant), desp: it.desp||0, conClip:!!it.conClip };
   });
   document.getElementById('inDesc').value = cot.descPct||0;
+  document.getElementById('inDespMadera').value = cot.despMaderaPct||0;
   document.getElementById('inArq').checked = !!cot.comisionArq;
   document.getElementById('inNotas').value = cot.notas||'';
   cot.condPago = c.condPago; cot.validez = c.validez; cot.lugarEnt = c.lugarEnt;
