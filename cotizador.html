@@ -76,6 +76,14 @@
   table.cart td { padding:8px; border-bottom:1px solid #f2ede2; font-size:13px; vertical-align:middle; }
   table.cart td.num, table.cart th.num { text-align:right; white-space:nowrap; }
   .qty-input { width:80px; text-align:right; }
+  .price-input { width:92px; text-align:right; padding:5px 6px; font-size:12.5px; }
+  .price-input.pmod-down { background:#FDECEC; border-color:#c0392b; outline-color:#c0392b; }
+  .price-input.pmod-up { background:#FFF3DC; border-color:#c77700; outline-color:#c77700; }
+  .pmod-badge { display:inline-block; font-size:9.5px; font-weight:800; letter-spacing:.5px; border-radius:6px; padding:1px 6px; margin-top:3px; }
+  .pmod-badge.down { background:#c0392b; color:#fff; }
+  .pmod-badge.up { background:#c77700; color:#fff; }
+  .pmod-restore { font-size:10px; color:#999; cursor:pointer; text-decoration:underline; }
+  .pmod-warn { background:#FDECEC; border:2px solid #c0392b; color:#7d1f1f; border-radius:8px; padding:10px 12px; margin:10px 0; font-size:12.5px; font-weight:700; }
   .rm { color:#b33; cursor:pointer; font-weight:700; padding:0 6px; }
   .clip-toggle { font-size:11px; color:#555; }
 
@@ -366,6 +374,7 @@
           </div>
         </div>
         <div class="totals-box">
+          <div id="pmodWarn" class="pmod-warn hidden"></div>
           <div class="tot-line"><span>Subtotal</span><span id="tSub">USD 0.00</span></div>
           <div class="tot-line" id="lineDesc"><span>Descuento (<span id="tDescPct">0</span>%)</span><span id="tDesc">— USD 0.00</span></div>
           <div class="tot-line big"><span>TOTAL</span><span id="tTotal">USD 0.00</span></div>
@@ -586,7 +595,9 @@ function itemsView() {
   if (I.modo==='int') {
     const t = base[I.targetK];
     if (t && t.cant>0) {
-      t.precio = t.precio + c.precioTotal/t.cant;
+      const instAdd = c.precioTotal/t.cant;
+      if (t.precioLista !== undefined && t.precioLista !== null) t.precioLista = parseFloat(t.precioLista) + instAdd;
+      t.precio = t.precio + instAdd;
       t.desc = t.desc + ' — instalación incluida';
       t._instMerged = true;
       return base;
@@ -995,7 +1006,7 @@ function agregarItem(i) {
   if (ex && p.con_clip_a===undefined) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); renderCart(); return; }
   const it = {
     idx:i, desc:`${p.madera} ${p.perfil}`, cat:p.cat, medidas:p.medidas, largos:p.largos,
-    u:p.u, precio:p.a, cantReal:1, desp:despPct, cant:1, conClip:false
+    u:p.u, precio:p.a, precioLista:p.a, cantReal:1, desp:despPct, cant:1, conClip:false
   };
   recalcCantFact(it);
   cot.items.push(it);
@@ -1005,8 +1016,29 @@ function agregarItem(i) {
 function toggleClip(k) {
   const it = cot.items[k]; const p = D[it.idx];
   it.conClip = !it.conClip;
-  it.precio = it.conClip ? p.con_clip_a : p.a;
+  const lista = it.conClip ? p.con_clip_a : p.a;
+  it.precio = lista;        // cambiar el clip resetea cualquier precio manual
+  it.precioLista = lista;
   renderCart();
+}
+// ★ Precio editable por ítem: el vendedor puede pisar el precio de lista.
+//   Si difiere, el ítem queda marcado y el guardado avisa a Gerencia.
+function setPrecio(k, v) {
+  const it = cot.items[k];
+  const n = parseFloat(v);
+  it.precio = (isNaN(n) || n < 0) ? 0 : n;
+  if (it.precioLista === undefined) it.precioLista = it.precio;
+  renderCart();
+}
+function restaurarPrecio(k) {
+  const it = cot.items[k];
+  if (it.precioLista !== undefined) it.precio = it.precioLista;
+  renderCart();
+}
+function precioModificado_(it) {
+  return it.precioLista !== undefined && it.precioLista !== null &&
+    parseFloat(it.precioLista) > 0 &&
+    Math.abs((parseFloat(it.precio) || 0) - parseFloat(it.precioLista)) > 0.005;
 }
 function setCant(k, v) {
   const it = cot.items[k];
@@ -1057,11 +1089,20 @@ function renderCart(full) {
       const mergedTag = it._instMerged ? '<div style="font-size:10px;color:#C9A227;font-weight:800">🔧 instalación integrada al precio</div>' : '';
       const cantReal = it.cantReal!==undefined ? it.cantReal : it.cant;
       const despHtml = (it.desp>0) ? `<div style="font-size:10px;color:#999;">+${it.desp}% desperdicio → ${fmt(it.cant, decFor(it.u))} ${it.u} facturados</div>` : '';
+      // ★ Precio editable + marca visible si difiere del precio de lista
+      const pmod = precioModificado_(it);
+      const lista = parseFloat(it.precioLista) || 0;
+      const abajo = pmod && (parseFloat(it.precio)||0) < lista;
+      const pctMod = pmod && lista > 0 ? Math.round(((parseFloat(it.precio)||0) - lista) / lista * 1000) / 10 : 0;
+      const badge = pmod ? `<div><span class="pmod-badge ${abajo?'down':'up'}">${abajo?'▼':'▲'} ${pctMod>0?'+':''}${pctMod}% vs lista</span></div><div style="font-size:10px;color:#999;">lista USD ${fmt(lista, decFor(it.u))} · <span class="pmod-restore" onclick="restaurarPrecio(${k})">restaurar</span></div>` : '';
+      const precioCell = it._instMerged
+        ? `USD ${fmt(it.precio, decFor(it.u))}${pmod ? '<div><span class="pmod-badge '+(abajo?'down':'up')+'">'+(abajo?'▼':'▲')+' precio modificado</span></div>' : ''}`
+        : `<input class="price-input ${pmod ? (abajo?'pmod-down':'pmod-up') : ''}" type="number" min="0" step="any" value="${Number((parseFloat(it.precio)||0).toFixed(4))}" onchange="setPrecio(${k},this.value)">${badge}`;
       return `<tr${it._instMerged?' style="background:#FBF3DC;"':''}>
         <td><b>${it.desc}</b><div style="font-size:11px;color:#888">${it.cat}</div>${clipHtml}${mergedTag}</td>
         <td>${it.medidas}</td>
         <td class="num"><input class="qty-input" type="number" min="0" step="any" value="${cantReal}" onchange="setCant(${k},this.value)"> <small>${it.u}</small>${despHtml}</td>
-        <td class="num">USD ${fmt(it.precio, decFor(it.u))}</td>
+        <td class="num">${precioCell}</td>
         <td class="num"><b>USD ${fmt(it.precio*it.cant)}</b></td>
         <td><span class="rm" onclick="quitarItem(${k})">✕</span></td>
       </tr>`;
@@ -1072,6 +1113,17 @@ function renderCart(full) {
     return renderCart(true);
   }
   if (cot.inst && cot.inst.on && cot.inst.modo==='int') instTargetVis();
+  // ★ Aviso general si hay precios pisados a mano (Gerencia se entera al guardar)
+  const nMod = itemsView().filter(it => !it._pseudo && precioModificado_(it)).length;
+  const warnEl = document.getElementById('pmodWarn');
+  if (warnEl) {
+    if (nMod > 0) {
+      warnEl.classList.remove('hidden');
+      warnEl.textContent = '⚠️ ' + nMod + ' producto' + (nMod===1?'':'s') + ' con precio modificado a mano — al guardar, Gerencia recibe el aviso con el detalle.';
+    } else {
+      warnEl.classList.add('hidden');
+    }
+  }
   const t = totales();
   document.getElementById('tSub').textContent = 'USD ' + fmt(t.sub);
   document.getElementById('tDescPct').textContent = t.pct;
@@ -1169,7 +1221,7 @@ async function guardarCot() {
       action:'cotSave', token: currentUser.token,
       id: cot.id, estado: cot.estado,
       clienteId: cliente.id, clienteNombre: cliente.razonSocial,
-      items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip})),
+      items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip})),
       inst: instSnapshot(),
       instCfg: instCfg(),
       vendedor: cot.vendedor || document.getElementById('inVend').value,
@@ -1341,13 +1393,19 @@ async function abrirCot(id, duplicar) {
     let idx = D.findIndex(p => (p.madera+' '+p.perfil)===descBase && p.medidas===it.medidas);
     if (it.cat==='Instalación') idx = -1;
     let precio = it.precio;
-    if (duplicar && idx>=0) precio = (it.conClip && D[idx].con_clip_a!==undefined) ? D[idx].con_clip_a : D[idx].a;
+    let precioLista = (it.precioLista!==undefined && it.precioLista!==null && it.precioLista!=='') ? parseFloat(it.precioLista) : undefined;
+    if (duplicar && idx>=0) {
+      precio = (it.conClip && D[idx].con_clip_a!==undefined) ? D[idx].con_clip_a : D[idx].a;
+      precioLista = precio; // duplicar toma precios vigentes de lista (resetea modificaciones)
+    }
     if (tieneInstCfg && / — instalación incluida$/.test(String(it.desc||'')) && !duplicar) {
       // quitar la parte de instalación del precio guardado: se recalcula en vivo
       const pi = (c.inst.precioTotal||0) / (parseFloat(it.cant)||1);
       precio = Math.max(0, precio - pi);
+      if (precioLista !== undefined) precioLista = Math.max(0, precioLista - pi);
     }
-    return { idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, cant:it.cant,
+    if (precioLista === undefined) precioLista = precio; // cotizaciones viejas sin lista guardada: sin falso aviso
+    return { idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, precioLista, cant:it.cant,
       cantReal: (it.cantReal!==undefined ? it.cantReal : it.cant), desp: it.desp||0, conClip:!!it.conClip };
   });
   document.getElementById('inDesc').value = cot.descPct||0;
