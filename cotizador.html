@@ -86,6 +86,9 @@
   .pmod-warn { background:#FDECEC; border:2px solid #c0392b; color:#7d1f1f; border-radius:8px; padding:10px 12px; margin:10px 0; font-size:12.5px; font-weight:700; }
   .rm { color:#b33; cursor:pointer; font-weight:700; padding:0 6px; }
   .clip-toggle { font-size:11px; color:#555; }
+  .comment-input { display:block; width:100%; max-width:290px; box-sizing:border-box; font-size:11.5px; padding:4px 7px; margin-top:5px; border:1px dashed #C9A227; border-radius:5px; background:#FFFDF6; color:#555; }
+  .comment-input:focus { border-style:solid; outline:none; border-color:#C9A227; }
+  .comment-input::placeholder { color:#b9ab7a; }
 
   .totals-grid { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start; }
   .totals-box { flex:1; min-width:260px; }
@@ -167,6 +170,7 @@
   table.pr-items td { font-size:11.5px; padding:9px 8px 9px 0; border-bottom:1px solid #e9e9e9; vertical-align:top; }
   table.pr-items .num { text-align:right; white-space:nowrap; }
   .pr-item-sub { font-size:9px; color:#999; margin-top:2px; letter-spacing:.5px; text-transform:uppercase; }
+  .pr-item-comment { font-size:10px; color:#7a5c00; margin-top:3px; font-style:italic; }
   .pr-bottom { display:flex; gap:26px; align-items:flex-start; margin-top:14px; }
   .pr-notes-fisc { flex:1; font-size:9.5px; color:#777; line-height:1.7; padding-top:4px; }
   .pr-totales { width:300px; }
@@ -963,6 +967,8 @@ function showTab(t) {
 
 // ---------- Productos ----------
 function fmt(v, dec) { return (v===null||v===undefined) ? '—' : v.toFixed(dec===undefined?2:dec); }
+// Escapa texto libre (comentarios de ítem) antes de insertarlo como HTML o como atributo value="".
+function escHtml_(s) { return String(s===undefined||s===null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function decFor(u) { return (u==='m/l'||u==='UN') ? 4 : 2; }
 
 function renderProdList() {
@@ -1006,7 +1012,7 @@ function agregarItem(i) {
   if (ex && p.con_clip_a===undefined) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); renderCart(); return; }
   const it = {
     idx:i, desc:`${p.madera} ${p.perfil}`, cat:p.cat, medidas:p.medidas, largos:p.largos,
-    u:p.u, precio:p.a, precioLista:p.a, cantReal:1, desp:despPct, cant:1, conClip:false
+    u:p.u, precio:p.a, precioLista:p.a, cantReal:1, desp:despPct, cant:1, conClip:false, comentario:''
   };
   recalcCantFact(it);
   cot.items.push(it);
@@ -1034,6 +1040,13 @@ function restaurarPrecio(k) {
   const it = cot.items[k];
   if (it.precioLista !== undefined) it.precio = it.precioLista;
   renderCart();
+}
+// ★ Comentario por ítem del carrito: nota EXTERNA — la ve el cliente en el
+//   PDF/cotización impresa. No confundir con notas internas de H3/obra.
+function setComentarioItem(k, v) {
+  const it = cot.items[k];
+  it.comentario = v || '';
+  guardarBorradorLocal();
 }
 function precioModificado_(it) {
   return it.precioLista !== undefined && it.precioLista !== null &&
@@ -1098,8 +1111,9 @@ function renderCart(full) {
       const precioCell = it._instMerged
         ? `USD ${fmt(it.precio, decFor(it.u))}${pmod ? '<div><span class="pmod-badge '+(abajo?'down':'up')+'">'+(abajo?'▼':'▲')+' precio modificado</span></div>' : ''}`
         : `<input class="price-input ${pmod ? (abajo?'pmod-down':'pmod-up') : ''}" type="number" min="0" step="any" value="${Number((parseFloat(it.precio)||0).toFixed(4))}" onchange="setPrecio(${k},this.value)">${badge}`;
+      const comentarioHtml = `<input type="text" class="comment-input" placeholder="💬 Comentario para el cliente (aparece en la cotización)" value="${escHtml_(it.comentario||'')}" onchange="setComentarioItem(${k},this.value)">`;
       return `<tr${it._instMerged?' style="background:#FBF3DC;"':''}>
-        <td><b>${it.desc}</b><div style="font-size:11px;color:#888">${it.cat}</div>${clipHtml}${mergedTag}</td>
+        <td><b>${it.desc}</b><div style="font-size:11px;color:#888">${it.cat}</div>${clipHtml}${mergedTag}${comentarioHtml}</td>
         <td>${it.medidas}</td>
         <td class="num"><input class="qty-input" type="number" min="0" step="any" value="${cantReal}" onchange="setCant(${k},this.value)"> <small>${it.u}</small>${despHtml}</td>
         <td class="num">${precioCell}</td>
@@ -1226,7 +1240,7 @@ async function guardarCotInterno_(estadoForzado) {
       action:'cotSave', token: currentUser.token,
       id: cot.id, estado: cot.estado,
       clienteId: cliente.id, clienteNombre: cliente.razonSocial,
-      items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip})),
+      items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||''})),
       inst: instSnapshot(),
       instCfg: instCfg(),
       vendedor: cot.vendedor || document.getElementById('inVend').value,
@@ -1455,7 +1469,8 @@ async function abrirCot(id, duplicar) {
     }
     if (precioLista === undefined) precioLista = precio; // cotizaciones viejas sin lista guardada: sin falso aviso
     return { idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, precioLista, cant:it.cant,
-      cantReal: (it.cantReal!==undefined ? it.cantReal : it.cant), desp: it.desp||0, conClip:!!it.conClip };
+      cantReal: (it.cantReal!==undefined ? it.cantReal : it.cant), desp: it.desp||0, conClip:!!it.conClip,
+      comentario: (duplicar ? '' : (it.comentario || '')) };
   });
   document.getElementById('inDesc').value = cot.descPct||0;
   document.getElementById('inDespMadera').value = cot.despMaderaPct||0;
@@ -1723,6 +1738,7 @@ const PDF_STYLE_CSS = `
   table.pr-items td { font-size:11.5px; padding:9px 8px 9px 0; border-bottom:1px solid #e9e9e9; vertical-align:top; }
   table.pr-items .num { text-align:right; white-space:nowrap; }
   .pr-item-sub { font-size:9px; color:#999; margin-top:2px; letter-spacing:.5px; text-transform:uppercase; }
+  .pr-item-comment { font-size:10px; color:#7a5c00; margin-top:3px; font-style:italic; }
   .pr-bottom { display:flex; gap:26px; align-items:flex-start; margin-top:14px; }
   .pr-notes-fisc { flex:1; font-size:9.5px; color:#777; line-height:1.7; padding-top:4px; }
   .pr-totales { width:300px; }
@@ -1820,7 +1836,7 @@ function buildPrint(c, clienteObj) {
   const rows = c.items.map((it,i)=>`
     <tr>
       <td class="num" style="color:#777">${i+1}</td>
-      <td><b>${it.desc}</b>${it.conClip?' — con clip':''}<div class="pr-item-sub">${it.cat}</div></td>
+      <td><b>${it.desc}</b>${it.conClip?' — con clip':''}<div class="pr-item-sub">${it.cat}</div>${it.comentario ? '<div class="pr-item-comment">'+escHtml_(it.comentario)+'</div>' : ''}</td>
       <td>${it.medidas}</td>
       <td class="num">${fmtAR(it.cant, 2)}</td>
       <td>${it.u}</td>
