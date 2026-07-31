@@ -120,6 +120,7 @@
   .seg-badge { background:#b33; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; }
   .seg-ok { color:#aaa; font-size:10px; }
   .seg-banner { background:#FDECEC; border:1px solid #e0b8b8; color:#8a2b2b; padding:10px 12px; border-radius:8px; margin-bottom:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:13px; }
+  .seg-banner-ok { background:#E8F5E9; border:1px solid #a5d6a7; color:#2e5d34; padding:10px 12px; border-radius:8px; margin-bottom:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:13px; }
 
   .row-actions { display:flex; gap:6px; flex-wrap:wrap; }
   .row-actions .btn { padding:5px 10px; font-size:12px; }
@@ -884,6 +885,10 @@ const API = {
 let currentUser = null;
 let CLIENTES = [];
 let COTS = [];
+// Mensaje de confirmación (guardado/impreso/enviado) que se muestra una sola vez
+// arriba de la lista de "Guardadas" cuando volvemos ahí automáticamente tras
+// guardar/imprimir una cotización. Se limpia solo después de mostrarse.
+let cotSuccessBanner_ = '';
 let cot = nuevaCotObj();
 
 function nuevaCotObj() {
@@ -1269,6 +1274,14 @@ async function guardarComoBorrador() {
   const res = await guardarCotInterno_('Borrador');
   if (!res) return;
   document.getElementById('cotMsg').textContent = '✓ Guardada como borrador (' + cot.id + ')';
+
+  // Cotización guardada: limpiamos el formulario y vamos al seguimiento
+  // (solapa "Guardadas") para que la próxima vez que se entre a cotizar
+  // arranque siempre en blanco.
+  cotSuccessBanner_ = 'Guardada como borrador (' + cot.id + ').';
+  nuevaCot();
+  renderCotList();
+  showTab('lista');
 }
 
 // Botón único "Guardar / Imprimir / Enviar": guarda, imprime (o genera
@@ -1288,22 +1301,40 @@ async function guardarImprimirEnviar() {
     plazoEnt:cot.plazoEnt, transEnt:cot.transEnt, ivaPct:cot.ivaPct, tc:cot.tc }, cliente);
   imprimirConNombre_(nombreArchivoCot_(cliente.razonSocial, cot.id));
 
+  const cotIdTerminada = cot.id; // se guarda antes de limpiar el formulario
   const email = (cliente.email || '').trim();
-  if (!email) { msg.textContent = '✓ Guardada e impresa como ' + cot.id + ' (el cliente no tiene email cargado, no se envió mail)'; return; }
 
-  msg.textContent = '✓ Guardada e impresa como ' + cot.id + ' · enviando por mail a ' + email + '…';
-  try {
-    const htmlPdf = '<html><head><meta charset="utf-8"><style>' + PDF_STYLE_CSS + '</style></head><body>' +
-      document.getElementById('printArea').innerHTML + '</body></html>';
-    const r2 = await API.post({
-      action:'cotEnviarCliente', token: currentUser.token,
-      id: cot.id, emailCliente: email, clienteNombre: cliente.razonSocial, htmlPdf
-    });
-    if (r2.ok) msg.textContent = '✓ Guardada, impresa y enviada por mail a ' + email + ' (' + cot.id + ')';
-    else { msg.className='status-msg err'; msg.textContent = '✓ Guardada e impresa (' + cot.id + '), pero el mail al cliente falló: ' + r2.error; }
-  } catch(e) {
-    msg.className='status-msg err'; msg.textContent = '✓ Guardada e impresa (' + cot.id + '), pero no se pudo enviar el mail (error de conexión).';
+  if (!email) {
+    msg.textContent = '✓ Guardada e impresa como ' + cotIdTerminada + ' (el cliente no tiene email cargado, no se envió mail)';
+    cotSuccessBanner_ = 'Guardada e impresa como ' + cotIdTerminada + ' (sin mail: el cliente no tiene email cargado).';
+  } else {
+    msg.textContent = '✓ Guardada e impresa como ' + cotIdTerminada + ' · enviando por mail a ' + email + '…';
+    try {
+      const htmlPdf = '<html><head><meta charset="utf-8"><style>' + PDF_STYLE_CSS + '</style></head><body>' +
+        document.getElementById('printArea').innerHTML + '</body></html>';
+      const r2 = await API.post({
+        action:'cotEnviarCliente', token: currentUser.token,
+        id: cotIdTerminada, emailCliente: email, clienteNombre: cliente.razonSocial, htmlPdf
+      });
+      if (r2.ok) {
+        msg.textContent = '✓ Guardada, impresa y enviada por mail a ' + email + ' (' + cotIdTerminada + ')';
+        cotSuccessBanner_ = 'Guardada, impresa y enviada por mail a ' + email + ' (' + cotIdTerminada + ').';
+      } else {
+        msg.className='status-msg err'; msg.textContent = '✓ Guardada e impresa (' + cotIdTerminada + '), pero el mail al cliente falló: ' + r2.error;
+        cotSuccessBanner_ = 'Guardada e impresa (' + cotIdTerminada + '), pero el mail al cliente falló: ' + r2.error;
+      }
+    } catch(e) {
+      msg.className='status-msg err'; msg.textContent = '✓ Guardada e impresa (' + cotIdTerminada + '), pero no se pudo enviar el mail (error de conexión).';
+      cotSuccessBanner_ = 'Guardada e impresa (' + cotIdTerminada + '), pero no se pudo enviar el mail (error de conexión).';
+    }
   }
+
+  // Cotización guardada/impresa/enviada: limpiamos el formulario y vamos al
+  // seguimiento (solapa "Guardadas", el CRM de cotizaciones) para que la
+  // próxima vez que se entre a cotizar arranque siempre en blanco.
+  nuevaCot();
+  renderCotList();
+  showTab('lista');
 }
 
 async function cargarCots() {
@@ -1389,10 +1420,14 @@ function renderCotList() {
 
   const pend = COTS.filter(necesitaSeguimiento_);
   document.getElementById('tab-lista').textContent = '📋 Guardadas' + (pend.length ? ' · ⏰' + pend.length : '');
-  document.getElementById('segBanner').innerHTML = pend.length
+  const okBanner = cotSuccessBanner_
+    ? `<div class="seg-banner-ok">✓ ${cotSuccessBanner_}</div>`
+    : '';
+  cotSuccessBanner_ = ''; // se muestra una sola vez
+  document.getElementById('segBanner').innerHTML = okBanner + (pend.length
     ? `<div class="seg-banner">⏰ <b>${pend.length}</b> cotizaci${pend.length>1?'ones':'ón'} sin movimiento hace 10+ días
        <button class="btn btn-dark" style="padding:4px 10px;font-size:11px;" onclick="document.getElementById('cotSoloSeg').checked=true;renderCotList()">Ver pendientes</button></div>`
-    : '';
+    : '');
 
   let list = COTS;
   if (est) list = list.filter(c=>c.estado===est);
