@@ -231,6 +231,10 @@
           </div>
         </div>
         <div>
+          <label>Estudio de arquitectura <span style="color:#C9A227;font-weight:700">(interno, no va al PDF)</span></label>
+          <input type="text" id="inEstudioArq" style="width:100%" placeholder="Estudio / arquitecto que atiende al cliente" oninput="guardarBorradorLocal()">
+        </div>
+        <div>
           <label>Notas / observaciones (van al PDF)</label>
           <input type="text" id="inNotas" style="width:100%" placeholder="Ej: entrega en obra, plazo 30 días…">
         </div>
@@ -368,13 +372,16 @@
             </div>
             <div style="align-self:flex-end;">
               <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-                <input type="checkbox" id="inArq" onchange="renderCart()" style="width:auto"> Comisión arquitecto 5% <span style="color:#C9A227;font-weight:700">(interno)</span>
+                <input type="checkbox" id="inArq" onchange="renderCart()" style="width:auto"> Comisión arquitecto <span style="color:#C9A227;font-weight:700">(interno)</span>
               </label>
+              <div style="display:flex;align-items:center;gap:4px;margin-top:4px;">
+                <input type="number" id="inArqPct" min="0" max="100" step="0.5" value="5" style="width:70px" oninput="renderCart()"> %
+              </div>
             </div>
           </div>
           <div class="interno" id="boxInterno">
             <div class="interno-title">Solo interno — no va al cliente</div>
-            <div class="tot-line"><span>Comisión arquitecto (5%)</span><span id="iComArq">—</span></div>
+            <div class="tot-line"><span>Comisión arquitecto (<span id="iComArqPct">5</span>%)</span><span id="iComArq">—</span></div>
             <div class="tot-line"><span>Comisión vendedor (<span id="iComVendPct">0</span>%)</span><span id="iComVend">—</span></div>
             <div class="tot-line"><span>Neto Kokkai</span><span id="iNeto">—</span></div>
           </div>
@@ -893,7 +900,7 @@ let cotSuccessBanner_ = '';
 let cot = nuevaCotObj();
 
 function nuevaCotObj() {
-  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, notas:'', inst: instDefault() };
+  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', notas:'', inst: instDefault() };
 }
 
 // ---------- Login ----------
@@ -1083,10 +1090,11 @@ function totales() {
   const desc = sub*pct/100;
   const total = sub - desc;
   const arq = document.getElementById('inArq').checked;
-  const com = arq ? total*0.05 : 0;
+  const arqPct = Math.min(Math.max(parseFloat(document.getElementById('inArqPct').value)||0,0),100);
+  const com = arq ? total*arqPct/100 : 0;
   const comVendPct = Math.min(Math.max(parseFloat(document.getElementById('inComVend').value)||0,0),100);
   const comVend = total*comVendPct/100;
-  return { sub, pct, desc, total, arq, com, comVendPct, comVend, neto: total-com-comVend };
+  return { sub, pct, desc, total, arq, arqPct, com, comVendPct, comVend, neto: total-com-comVend };
 }
 
 function renderCart(full) {
@@ -1150,6 +1158,7 @@ function renderCart(full) {
   document.getElementById('tDesc').textContent = '— USD ' + fmt(t.desc);
   document.getElementById('lineDesc').style.display = t.pct>0 ? 'flex' : 'none';
   document.getElementById('tTotal').textContent = 'USD ' + fmt(t.total);
+  document.getElementById('iComArqPct').textContent = t.arqPct;
   document.getElementById('iComArq').textContent = t.arq ? '— USD ' + fmt(t.com) : '—';
   document.getElementById('iComVendPct').textContent = t.comVendPct;
   document.getElementById('iComVend').textContent = t.comVend>0 ? '— USD ' + fmt(t.comVend) : '—';
@@ -1162,6 +1171,8 @@ function guardarBorradorLocal() {
   cot.descPct = parseFloat(document.getElementById('inDesc').value)||0;
   cot.despMaderaPct = parseFloat(document.getElementById('inDespMadera').value)||0;
   cot.comisionArq = document.getElementById('inArq').checked;
+  cot.comisionArqPct = parseFloat(document.getElementById('inArqPct').value)||0;
+  cot.estudioArq = document.getElementById('inEstudioArq').value;
   cot.notas = document.getElementById('inNotas').value;
   cot.vendedor = document.getElementById('inVend').value;
   cot.comVendPct = parseFloat(document.getElementById('inComVend').value)||0;
@@ -1183,6 +1194,8 @@ function restaurarBorradorLocal() {
       document.getElementById('inDesc').value = cot.descPct||0;
       document.getElementById('inDespMadera').value = cot.despMaderaPct||0;
       document.getElementById('inArq').checked = !!cot.comisionArq;
+      document.getElementById('inArqPct').value = (cot.comisionArqPct!==undefined && cot.comisionArqPct!==null && cot.comisionArqPct!=='') ? cot.comisionArqPct : 5;
+      document.getElementById('inEstudioArq').value = cot.estudioArq||'';
       document.getElementById('inNotas').value = cot.notas||'';
       document.getElementById('inVend').value = cot.vendedor || 'Franco Faggioni';
       document.getElementById('inComVend').value = (cot.comVendPct!==undefined && cot.comVendPct!==null && cot.comVendPct!=='') ? cot.comVendPct : defaultComVend(document.getElementById('inVend').value);
@@ -1213,6 +1226,8 @@ function nuevaCot() {
   document.getElementById('inDesc').value = 0;
   document.getElementById('inDespMadera').value = 0;
   document.getElementById('inArq').checked = false;
+  document.getElementById('inArqPct').value = 5;
+  document.getElementById('inEstudioArq').value = '';
   document.getElementById('inNotas').value = '';
   const vd = (currentUser && currentUser.usuario === 'Franco') ? 'Franco Faggioni' : 'Christian Holler';
   document.getElementById('inVend').value = vd;
@@ -1252,7 +1267,7 @@ async function guardarCotInterno_(estadoForzado) {
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
       padreId: cot.padreId || '',
-      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, notas: cot.notas,
+      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, comisionArqPct: cot.comisionArqPct||0, estudioArq: cot.estudioArq||'', notas: cot.notas,
       condPago: cot.condPago, validez: cot.validez, lugarEnt: cot.lugarEnt,
       plazoEnt: cot.plazoEnt, transEnt: cot.transEnt, ivaPct: cot.ivaPct, tc: cot.tc
     });
@@ -1446,7 +1461,7 @@ function renderCotList() {
       <div style="flex:1;min-width:200px;">
         <span class="c-id">${c.id}</span> — ${c.clienteNombre||'<i>sin cliente</i>'}
         ${c.padreId?'<span class="ver-tag">⑂ v. de '+c.padreId+'</span>':''}
-        ${c.comisionArq?'<span class="flag-arq">◆ arq.</span>':''}
+        ${c.comisionArq?'<span class="flag-arq">◆ arq. '+(c.comisionArqPct||5)+'%'+(c.estudioArq?' — '+escHtml_(c.estudioArq):'')+'</span>':''}
         ${seg ? '<span class="seg-badge">⏰ '+dias+' días sin movimiento</span>' : (terminal ? '' : '<span class="seg-ok">hace '+dias+' d</span>')}
         <div class="c-sub">${c.fecha} · ${c.vendedor ? c.vendedor+' · ' : ''}${c.resumen}</div>
       </div>
@@ -1479,6 +1494,8 @@ async function abrirCot(id, duplicar) {
   cot.descPct = c.descPct;
   cot.despMaderaPct = c.despMaderaPct || 0;
   cot.comisionArq = c.comisionArq;
+  cot.comisionArqPct = (c.comisionArqPct!==undefined && c.comisionArqPct!==null && c.comisionArqPct!=='') ? c.comisionArqPct : 5;
+  cot.estudioArq = c.estudioArq || '';
   cot.clienteId = c.clienteId;
   cot.vendedor = c.vendedor;
   cot.padreId = duplicar ? '' : (c.padreId || '');
@@ -1511,6 +1528,8 @@ async function abrirCot(id, duplicar) {
   document.getElementById('inDesc').value = cot.descPct||0;
   document.getElementById('inDespMadera').value = cot.despMaderaPct||0;
   document.getElementById('inArq').checked = !!cot.comisionArq;
+  document.getElementById('inArqPct').value = cot.comisionArqPct;
+  document.getElementById('inEstudioArq').value = cot.estudioArq;
   document.getElementById('inNotas').value = cot.notas||'';
   cot.condPago = c.condPago; cot.validez = c.validez; cot.lugarEnt = c.lugarEnt;
   cot.plazoEnt = c.plazoEnt; cot.transEnt = c.transEnt; cot.ivaPct = c.ivaPct; cot.tc = c.tc;
