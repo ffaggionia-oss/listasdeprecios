@@ -521,7 +521,7 @@ let MAESTRO = null; // {tipos, materiales, perifericos, escaladores, reductores,
 
 function instDefault() {
   return { on:false, m2:0, modo:'sep', targetK:0, tiposSel:{}, mats:{}, perif:{}, esc:{}, red:{},
-    fiscal:true, margen:0.40, segId:'' };
+    fiscal:true, margen:0.40, segId:'', segIdx:-1 };
 }
 // Corrige objetos cot.inst viejos (guardados en el borrador local del navegador
 // ANTES de que "tipo de colocación" pasara de radio único a checkbox múltiple).
@@ -696,15 +696,20 @@ function instToggle(on) {
 function instSet(k,v) { instEnsure()[k]=v; if (k==='modo') instTargetVis(); instRecalc(); }
 function instToggleTipo(id, checked) { instEnsure().tiposSel[id] = checked; instRecalc(); }
 function instSetMargen(v) {
-  const I=instEnsure(); I.margen=Math.min(Math.max((parseFloat(v)||0)/100,0),0.9); I.segId='';
+  const I=instEnsure(); I.margen=Math.min(Math.max((parseFloat(v)||0)/100,0),0.9); I.segId=''; I.segIdx=-1;
   document.querySelectorAll('#instSegs .seg-btn').forEach(b=>b.classList.remove('active'));
   instRecalc();
 }
-function instSetSeg(id) {
-  const s=(MAESTRO.segmentos||[]).find(x=>x.id===id); if (!s) return;
-  const I=instEnsure(); I.margen=parseFloat(s.margen)||0; I.segId=s.id;
+function instSetSeg(id, idx) {
+  // Preferimos el segmento por POSICIÓN (idx) — si dos filas del Maestro
+  // comparten el mismo id (dato duplicado en la hoja), buscar solo por id
+  // siempre encuentra la primera fila, aunque el clic haya sido en la
+  // segunda tarjeta. La posición no se ambigua nunca.
+  const s = (idx!==undefined && (MAESTRO.segmentos||[])[idx]) ? MAESTRO.segmentos[idx] : (MAESTRO.segmentos||[]).find(x=>x.id===id);
+  if (!s) return;
+  const I=instEnsure(); I.margen=parseFloat(s.margen)||0; I.segId=s.id; I.segIdx=(idx!==undefined?idx:-1);
   document.getElementById('instMargen').value=Math.round(I.margen*100);
-  document.querySelectorAll('#instSegs .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.id===id));
+  document.querySelectorAll('#instSegs .seg-btn').forEach(b=>b.classList.toggle('active', Number(b.dataset.idx)===I.segIdx));
   instRecalc();
 }
 function instSetM2(v) {
@@ -805,10 +810,18 @@ function buildInstUI() {
     }).join('');
 
   // Segmentos de margen (vienen del Maestro; si no llegan, queda el margen manual)
-  document.getElementById('instSegs').innerHTML = (MAESTRO.segmentos||[]).map(s=>`
-    <div class="seg-btn ${I.segId===s.id?'active':''}" data-id="${s.id}" onclick="instSetSeg('${s.id}')">
+  // Si hay una selección guardada (segId) pero todavía no sabemos su posición
+  // (segIdx), la recuperamos ahora buscando la primera fila con ese id — es
+  // el mismo "mejor esfuerzo" que ya hacía el código viejo, solo que a partir
+  // de acá la posición (idx) manda para evitar el bug de ids duplicados.
+  if ((I.segIdx===undefined || I.segIdx===null || I.segIdx<0) && I.segId) {
+    const idxRec = (MAESTRO.segmentos||[]).findIndex(s=>s.id===I.segId);
+    if (idxRec>=0) I.segIdx = idxRec;
+  }
+  document.getElementById('instSegs').innerHTML = (MAESTRO.segmentos||[]).map((s,i)=>`
+    <div class="seg-btn ${I.segIdx===i?'active':''}" data-id="${s.id}" data-idx="${i}" onclick="instSetSeg('${s.id}', ${i})">
       <div class="sn">${s.nombre}</div><div class="sm">margen ${Math.round((parseFloat(s.margen)||0)*100)}%</div>
-      <div class="sp" id="instSegP-${s.id}">—</div>
+      <div class="sp" id="instSegP-idx-${i}">—</div>
     </div>`).join('');
 
   instRecalc(true);
@@ -836,8 +849,8 @@ function instRecalc(skipCart) {
     const el=document.getElementById('instPerC-'+p.id);
     if (el) el.textContent = cant>0 ? 'USD '+fmt(cant*(parseFloat(p.costoUn)||0)) : '—';
   });
-  (MAESTRO.segmentos||[]).forEach(s=>{
-    const el=document.getElementById('instSegP-'+s.id);
+  (MAESTRO.segmentos||[]).forEach((s,i)=>{
+    const el=document.getElementById('instSegP-idx-'+i);
     const mgS = parseFloat(s.margen)||0;
     if (el) {
       const pM2 = mgS<1 ? c.costoM2/(1-mgS) : c.costoM2;
