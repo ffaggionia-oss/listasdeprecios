@@ -171,6 +171,7 @@
   table.pr-items td { font-size:11.5px; padding:9px 8px 9px 0; border-bottom:1px solid #e9e9e9; vertical-align:top; }
   table.pr-items .num { text-align:right; white-space:nowrap; }
   .pr-item-sub { font-size:9px; color:#999; margin-top:2px; letter-spacing:.5px; text-transform:uppercase; }
+  .pr-item-desp { font-size:9px; color:#8a6d1f; margin-top:2px; }
   .pr-item-comment { font-size:10px; color:#7a5c00; margin-top:3px; font-style:italic; }
   .pr-bottom { display:flex; gap:26px; align-items:flex-start; margin-top:14px; }
   .pr-notes-fisc { flex:1; font-size:9.5px; color:#777; line-height:1.7; padding-top:4px; }
@@ -1773,6 +1774,7 @@ const PDF_STYLE_CSS = `
   table.pr-items td { font-size:11.5px; padding:9px 8px 9px 0; border-bottom:1px solid #e9e9e9; vertical-align:top; }
   table.pr-items .num { text-align:right; white-space:nowrap; }
   .pr-item-sub { font-size:9px; color:#999; margin-top:2px; letter-spacing:.5px; text-transform:uppercase; }
+  .pr-item-desp { font-size:9px; color:#8a6d1f; margin-top:2px; }
   .pr-item-comment { font-size:10px; color:#7a5c00; margin-top:3px; font-style:italic; }
   .pr-bottom { display:flex; gap:26px; align-items:flex-start; margin-top:14px; }
   .pr-notes-fisc { flex:1; font-size:9.5px; color:#777; line-height:1.7; padding-top:4px; }
@@ -1868,16 +1870,19 @@ function buildPrint(c, clienteObj) {
   const tc = parseFloat(fv(c.tc, 'inTC', 0)) || 0;
   const vto = new Date(Date.now() + validez*86400000).toLocaleDateString('es-AR');
 
-  const rows = c.items.map((it,i)=>`
+  const rows = c.items.map((it,i)=>{
+    const despHtml = (it.desp>0) ? `<div class="pr-item-desp">Incluye ${it.desp}% de desperdicio de obra (recortes)</div>` : '';
+    return `
     <tr>
       <td class="num" style="color:#777">${i+1}</td>
-      <td><b>${it.desc}</b>${it.conClip?' — con clip':''}<div class="pr-item-sub">${it.cat}</div>${it.comentario ? '<div class="pr-item-comment">'+escHtml_(it.comentario)+'</div>' : ''}</td>
+      <td><b>${it.desc}</b>${it.conClip?' — con clip':''}<div class="pr-item-sub">${it.cat}</div>${despHtml}${it.comentario ? '<div class="pr-item-comment">'+escHtml_(it.comentario)+'</div>' : ''}</td>
       <td>${it.medidas}</td>
       <td class="num">${fmtAR(it.cant, 2)}</td>
       <td>${it.u}</td>
       <td class="num">${fmtAR(it.precio, decFor(it.u))}</td>
       <td class="num"><b>${fmtAR(it.precio*it.cant)}</b></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 
   const sub = c.items.reduce((s,it)=>s+it.precio*it.cant,0);
   const descPct = c.descPct||0;
