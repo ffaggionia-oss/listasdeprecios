@@ -392,6 +392,12 @@
           <div class="tot-line" id="lineDesc"><span>Descuento (<span id="tDescPct">0</span>%)</span><span id="tDesc">— USD 0.00</span></div>
           <div class="tot-line big"><span>TOTAL</span><span id="tTotal">USD 0.00</span></div>
           <div style="font-size:11px;color:#999;">Precios en USD. No incluyen IVA.</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed #ddd;">
+            <label style="font-size:11px;color:#999;white-space:nowrap;">Redondear total a</label>
+            <input type="number" id="inRedondeo" min="0" step="1" placeholder="ej: 34000" style="width:110px" onkeydown="if(event.key==='Enter'){redondearTotal();event.preventDefault();}">
+            <button class="btn btn-ghost" style="padding:5px 10px;font-size:11px;" onclick="redondearTotal()">Redondear</button>
+          </div>
+          <div id="redondeoMsg" style="font-size:11px;margin-top:4px;"></div>
         </div>
       </div>
 
@@ -1083,6 +1089,31 @@ function capDesc() {
   cot.descPct = v;
 }
 
+// Redondear el TOTAL final a un número "lindo" (ej: 34.200 → 34.000).
+// Calcula qué % de descuento hace falta sobre el subtotal actual para llegar
+// exacto a ese número y lo carga en "Descuento de cierre" (tope 5%, el mismo
+// que ya existe). Si el número pedido está fuera de ese margen, avisa en vez
+// de aplicarlo — así nunca se pisa el tope de rentabilidad en silencio.
+function redondearTotal() {
+  const msgEl = document.getElementById('redondeoMsg');
+  const target = parseFloat(document.getElementById('inRedondeo').value);
+  if (!target || target <= 0) { msgEl.style.color='#b33'; msgEl.textContent = 'Ingresá el total al que querés redondear.'; return; }
+  const t = totales();
+  if (target > t.sub) { msgEl.style.color='#b33'; msgEl.textContent = 'Ese número es mayor al subtotal (USD ' + fmt(t.sub) + ') — no se puede llegar con un descuento.'; return; }
+  const pctNecesario = (1 - target/t.sub) * 100;
+  if (pctNecesario > MAX_DESC + 0.001) {
+    msgEl.style.color='#b33';
+    msgEl.textContent = 'Para llegar a USD ' + fmt(target) + ' hace falta ' + pctNecesario.toFixed(2) + '% de descuento, y el tope de "descuento de cierre" es ' + MAX_DESC + '%. Ajustá precios de ítems si igual querés llegar a ese número.';
+    return;
+  }
+  const pctRedondeado = Math.round(pctNecesario * 100) / 100; // 2 decimales alcanza de sobra
+  document.getElementById('inDesc').value = pctRedondeado;
+  cot.descPct = pctRedondeado;
+  renderCart();
+  msgEl.style.color='#2e5d34';
+  msgEl.textContent = '✓ Descuento ajustado a ' + pctRedondeado + '% → total USD ' + fmt(totales().total);
+}
+
 // ---------- Carrito y totales ----------
 function totales() {
   const sub = itemsView().reduce((s,it)=>s + it.precio*it.cant, 0);
@@ -1225,6 +1256,8 @@ function nuevaCot() {
   cot = nuevaCotObj();
   document.getElementById('inDesc').value = 0;
   document.getElementById('inDespMadera').value = 0;
+  document.getElementById('inRedondeo').value = '';
+  document.getElementById('redondeoMsg').textContent = '';
   document.getElementById('inArq').checked = false;
   document.getElementById('inArqPct').value = 5;
   document.getElementById('inEstudioArq').value = '';
