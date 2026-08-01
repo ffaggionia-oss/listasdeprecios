@@ -235,6 +235,10 @@
           <input type="text" id="inEstudioArq" style="width:100%" placeholder="Estudio / arquitecto que atiende al cliente" oninput="guardarBorradorLocal()">
         </div>
         <div>
+          <label>Dirección de la obra <span style="color:#C9A227;font-weight:700">(interno, no va al PDF)</span></label>
+          <input type="text" id="inDireccionObra" style="width:100%" placeholder="Ubicación del sitio de trabajo — si es distinta a la dirección fiscal del cliente" oninput="guardarBorradorLocal()">
+        </div>
+        <div>
           <label>Notas / observaciones (van al PDF)</label>
           <input type="text" id="inNotas" style="width:100%" placeholder="Ej: entrega en obra, plazo 30 días…">
         </div>
@@ -919,7 +923,7 @@ let cotSuccessBanner_ = '';
 let cot = nuevaCotObj();
 
 function nuevaCotObj() {
-  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', notas:'', inst: instDefault() };
+  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', direccionObra:'', notas:'', inst: instDefault() };
 }
 
 // ---------- Login ----------
@@ -1217,6 +1221,7 @@ function guardarBorradorLocal() {
   cot.comisionArq = document.getElementById('inArq').checked;
   cot.comisionArqPct = parseFloat(document.getElementById('inArqPct').value)||0;
   cot.estudioArq = document.getElementById('inEstudioArq').value;
+  cot.direccionObra = document.getElementById('inDireccionObra').value;
   cot.notas = document.getElementById('inNotas').value;
   cot.vendedor = document.getElementById('inVend').value;
   cot.comVendPct = parseFloat(document.getElementById('inComVend').value)||0;
@@ -1240,6 +1245,7 @@ function restaurarBorradorLocal() {
       document.getElementById('inArq').checked = !!cot.comisionArq;
       document.getElementById('inArqPct').value = (cot.comisionArqPct!==undefined && cot.comisionArqPct!==null && cot.comisionArqPct!=='') ? cot.comisionArqPct : 5;
       document.getElementById('inEstudioArq').value = cot.estudioArq||'';
+      document.getElementById('inDireccionObra').value = cot.direccionObra||'';
       document.getElementById('inNotas').value = cot.notas||'';
       document.getElementById('inVend').value = cot.vendedor || 'Franco Faggioni';
       document.getElementById('inComVend').value = (cot.comVendPct!==undefined && cot.comVendPct!==null && cot.comVendPct!=='') ? cot.comVendPct : defaultComVend(document.getElementById('inVend').value);
@@ -1274,6 +1280,7 @@ function nuevaCot() {
   document.getElementById('inArq').checked = false;
   document.getElementById('inArqPct').value = 5;
   document.getElementById('inEstudioArq').value = '';
+  document.getElementById('inDireccionObra').value = '';
   document.getElementById('inNotas').value = '';
   const vd = (currentUser && currentUser.usuario === 'Franco') ? 'Franco Faggioni' : 'Christian Holler';
   document.getElementById('inVend').value = vd;
@@ -1313,7 +1320,7 @@ async function guardarCotInterno_(estadoForzado) {
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
       padreId: cot.padreId || '',
-      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, comisionArqPct: cot.comisionArqPct||0, estudioArq: cot.estudioArq||'', notas: cot.notas,
+      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, comisionArqPct: cot.comisionArqPct||0, estudioArq: cot.estudioArq||'', direccionObra: cot.direccionObra||'', notas: cot.notas,
       condPago: cot.condPago, validez: cot.validez, lugarEnt: cot.lugarEnt,
       plazoEnt: cot.plazoEnt, transEnt: cot.transEnt, ivaPct: cot.ivaPct, tc: cot.tc
     });
@@ -1542,6 +1549,7 @@ async function abrirCot(id, duplicar) {
   cot.comisionArq = c.comisionArq;
   cot.comisionArqPct = (c.comisionArqPct!==undefined && c.comisionArqPct!==null && c.comisionArqPct!=='') ? c.comisionArqPct : 5;
   cot.estudioArq = c.estudioArq || '';
+  cot.direccionObra = c.direccionObra || '';
   cot.clienteId = c.clienteId;
   cot.vendedor = c.vendedor;
   cot.padreId = duplicar ? '' : (c.padreId || '');
@@ -1576,6 +1584,7 @@ async function abrirCot(id, duplicar) {
   document.getElementById('inArq').checked = !!cot.comisionArq;
   document.getElementById('inArqPct').value = cot.comisionArqPct;
   document.getElementById('inEstudioArq').value = cot.estudioArq;
+  document.getElementById('inDireccionObra').value = cot.direccionObra || '';
   document.getElementById('inNotas').value = cot.notas||'';
   cot.condPago = c.condPago; cot.validez = c.validez; cot.lugarEnt = c.lugarEnt;
   cot.plazoEnt = c.plazoEnt; cot.transEnt = c.transEnt; cot.ivaPct = c.ivaPct; cot.tc = c.tc;
