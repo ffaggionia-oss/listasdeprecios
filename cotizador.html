@@ -205,6 +205,7 @@
   <button class="tab active" id="tab-nueva" onclick="showTab('nueva')">➕ Cotización</button>
   <button class="tab" id="tab-lista" onclick="showTab('lista')">📋 Guardadas</button>
   <button class="tab" id="tab-clientes" onclick="showTab('clientes')">👤 Clientes</button>
+  <button class="tab" id="tab-estudios" onclick="showTab('estudios')">🏛 Estudios</button>
 </div>
 <main>
 
@@ -214,11 +215,15 @@
       <h3 id="cotTitle">Nueva cotización</h3>
       <div class="grid2">
         <div>
-          <label>Cliente</label>
+          <label>Cliente <span style="color:#999;font-weight:400">(opcional si todavía no tenés el comitente — cargá el estudio y el nombre de la obra)</span></label>
           <div style="display:flex;gap:6px;">
-            <select id="selCliente" style="flex:1"></select>
+            <select id="selCliente" style="flex:1" onchange="guardarBorradorLocal()"></select>
             <button class="btn btn-ghost" onclick="abrirNuevoCliente()">+ Nuevo</button>
           </div>
+        </div>
+        <div>
+          <label>Nombre de la obra <span style="color:#C9A227;font-weight:700">(interno — para identificarla si no hay comitente todavía)</span></label>
+          <input type="text" id="inNombreObra" style="width:100%" placeholder="Ej: Casa Nordelta, Reforma Pacífica 1…" oninput="guardarBorradorLocal()">
         </div>
         <div>
           <label>Vendedor · % comisión <span style="color:#C9A227;font-weight:700">(interno, no va al PDF)</span></label>
@@ -232,7 +237,10 @@
         </div>
         <div>
           <label>Estudio de arquitectura <span style="color:#C9A227;font-weight:700">(interno, no va al PDF)</span></label>
-          <input type="text" id="inEstudioArq" style="width:100%" placeholder="Estudio / arquitecto que atiende al cliente" oninput="guardarBorradorLocal()">
+          <div style="display:flex;gap:6px;">
+            <select id="selEstudio" style="flex:1" onchange="estudioCambiado()"></select>
+            <button class="btn btn-ghost" onclick="abrirNuevoEstudio()">+ Nuevo</button>
+          </div>
         </div>
         <div>
           <label>Dirección de la obra <span style="color:#C9A227;font-weight:700">(interno, no va al PDF)</span></label>
@@ -476,6 +484,33 @@
     <div class="card">
       <h3>Clientes</h3>
       <div id="cliList"><div style="color:#aaa;padding:14px;">Cargando…</div></div>
+    </div>
+  </div>
+
+  <div id="pane-estudios" class="hidden">
+    <div class="card">
+      <h3 id="estFormTitle">Nuevo estudio de arquitectura</h3>
+      <div class="grid2">
+        <div><label>Nombre del estudio</label><input type="text" id="eNombre" style="width:100%"></div>
+        <div><label>Contacto</label><input type="text" id="eContacto" style="width:100%"></div>
+        <div><label>Email</label><input type="text" id="eEmail" style="width:100%"></div>
+        <div><label>Teléfono</label><input type="text" id="eTel" style="width:100%"></div>
+        <div><label>% comisión por defecto</label><input type="number" id="eComPct" min="0" max="100" step="0.5" value="5" style="width:100%"></div>
+        <div><label>Notas</label><input type="text" id="eNotas" style="width:100%"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-gold" onclick="guardarEstudio()">💾 Guardar estudio</button>
+        <button class="btn btn-ghost" onclick="limpiarEstForm()">Limpiar</button>
+      </div>
+      <div class="status-msg" id="estMsg"></div>
+    </div>
+    <div class="card">
+      <h3>Estudios</h3>
+      <div id="estList"><div style="color:#aaa;padding:14px;">Cargando…</div></div>
+    </div>
+    <div class="card hidden" id="estResumenCard">
+      <h3 id="estResumenTitle">Obras y comisiones</h3>
+      <div id="estResumenBody"></div>
     </div>
   </div>
 
@@ -915,6 +950,7 @@ const API = {
 // ---------- Estado ----------
 let currentUser = null;
 let CLIENTES = [];
+let ESTUDIOS = [];
 let COTS = [];
 // Mensaje de confirmación (guardado/impreso/enviado) que se muestra una sola vez
 // arriba de la lista de "Guardadas" cuando volvemos ahí automáticamente tras
@@ -923,7 +959,7 @@ let cotSuccessBanner_ = '';
 let cot = nuevaCotObj();
 
 function nuevaCotObj() {
-  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', direccionObra:'', notas:'', inst: instDefault() };
+  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', estudioId:'', nombreObra:'', direccionObra:'', notas:'', inst: instDefault() };
 }
 
 // ---------- Login ----------
@@ -960,7 +996,7 @@ async function iniciarApp() {
   document.getElementById('cardInst').classList.add('hidden'); // se muestra solo si llega el Maestro
   restaurarBorradorLocal();
   renderCart();
-  await Promise.all([cargarProductos(), cargarMaestro(), cargarClientes(), cargarCots()]);
+  await Promise.all([cargarProductos(), cargarMaestro(), cargarClientes(), cargarEstudios(), cargarCots()]);
   renderProdList();
   buildInstUI();
   renderCart();
@@ -995,7 +1031,7 @@ async function cargarMaestro() {
 
 // ---------- Tabs ----------
 function showTab(t) {
-  ['nueva','lista','clientes'].forEach(x => {
+  ['nueva','lista','clientes','estudios'].forEach(x => {
     document.getElementById('pane-'+x).classList.toggle('hidden', x!==t);
     document.getElementById('tab-'+x).classList.toggle('active', x===t);
   });
@@ -1220,7 +1256,9 @@ function guardarBorradorLocal() {
   cot.despMaderaPct = parseFloat(document.getElementById('inDespMadera').value)||0;
   cot.comisionArq = document.getElementById('inArq').checked;
   cot.comisionArqPct = parseFloat(document.getElementById('inArqPct').value)||0;
-  cot.estudioArq = document.getElementById('inEstudioArq').value;
+  cot.estudioId = document.getElementById('selEstudio').value;
+  cot.estudioArq = nombreEstudio_(cot.estudioId);
+  cot.nombreObra = document.getElementById('inNombreObra').value;
   cot.direccionObra = document.getElementById('inDireccionObra').value;
   cot.notas = document.getElementById('inNotas').value;
   cot.vendedor = document.getElementById('inVend').value;
@@ -1244,7 +1282,8 @@ function restaurarBorradorLocal() {
       document.getElementById('inDespMadera').value = cot.despMaderaPct||0;
       document.getElementById('inArq').checked = !!cot.comisionArq;
       document.getElementById('inArqPct').value = (cot.comisionArqPct!==undefined && cot.comisionArqPct!==null && cot.comisionArqPct!=='') ? cot.comisionArqPct : 5;
-      document.getElementById('inEstudioArq').value = cot.estudioArq||'';
+      document.getElementById('selEstudio').value = cot.estudioId||'';
+      document.getElementById('inNombreObra').value = cot.nombreObra||'';
       document.getElementById('inDireccionObra').value = cot.direccionObra||'';
       document.getElementById('inNotas').value = cot.notas||'';
       document.getElementById('inVend').value = cot.vendedor || 'Franco Faggioni';
@@ -1279,7 +1318,8 @@ function nuevaCot() {
   document.getElementById('redondeoMsg').textContent = '';
   document.getElementById('inArq').checked = false;
   document.getElementById('inArqPct').value = 5;
-  document.getElementById('inEstudioArq').value = '';
+  document.getElementById('selEstudio').value = '';
+  document.getElementById('inNombreObra').value = '';
   document.getElementById('inDireccionObra').value = '';
   document.getElementById('inNotas').value = '';
   const vd = (currentUser && currentUser.usuario === 'Franco') ? 'Franco Faggioni' : 'Christian Holler';
@@ -1305,7 +1345,17 @@ async function guardarCotInterno_(estadoForzado) {
   if (cot.items.length===0) { msg.className='status-msg err'; msg.textContent='Agregá al menos un producto.'; return null; }
   const sel = document.getElementById('selCliente');
   const cliente = CLIENTES.find(c=>c.id===sel.value);
-  if (!cliente) { msg.className='status-msg err'; msg.textContent='Elegí un cliente (o creá uno nuevo).'; return null; }
+  const estudioSel = ESTUDIOS.find(e=>e.id===document.getElementById('selEstudio').value);
+  const nombreObra = document.getElementById('inNombreObra').value.trim();
+  // ★ El cliente es opcional: si todavía no sabés el comitente (pasa
+  // seguido cuando entra por un estudio de arquitectura), alcanza con
+  // elegir el estudio y/o poner un nombre de obra para identificarla.
+  if (!cliente && !nombreObra && !estudioSel) {
+    msg.className='status-msg err';
+    msg.textContent='Elegí un cliente, un estudio de arquitectura, o al menos poné un nombre de obra.';
+    return null;
+  }
+  const clienteNombreFinal = cliente ? cliente.razonSocial : (nombreObra || (estudioSel ? estudioSel.nombre : ''));
   guardarBorradorLocal();
   if (estadoForzado) cot.estado = estadoForzado;
   msg.textContent = 'Guardando…';
@@ -1313,14 +1363,14 @@ async function guardarCotInterno_(estadoForzado) {
     const r = await API.post({
       action:'cotSave', token: currentUser.token,
       id: cot.id, estado: cot.estado,
-      clienteId: cliente.id, clienteNombre: cliente.razonSocial,
+      clienteId: cliente ? cliente.id : '', clienteNombre: clienteNombreFinal, nombreObra: nombreObra,
       items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||''})),
       inst: instSnapshot(),
       instCfg: instCfg(),
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
       padreId: cot.padreId || '',
-      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, comisionArqPct: cot.comisionArqPct||0, estudioArq: cot.estudioArq||'', direccionObra: cot.direccionObra||'', notas: cot.notas,
+      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, comisionArqPct: cot.comisionArqPct||0, estudioId: cot.estudioId||'', direccionObra: cot.direccionObra||'', notas: cot.notas,
       condPago: cot.condPago, validez: cot.validez, lugarEnt: cot.lugarEnt,
       plazoEnt: cot.plazoEnt, transEnt: cot.transEnt, ivaPct: cot.ivaPct, tc: cot.tc
     });
@@ -1330,7 +1380,12 @@ async function guardarCotInterno_(estadoForzado) {
     aprenderOpciones();
     localStorage.removeItem('kk_cot_draft');
     cargarCots();
-    return { cliente };
+    // ★ Si no se eligió un Cliente formal (cotización a un estudio sin
+    // comitente confirmado todavía), devolvemos un objeto "de pantalla" con
+    // el nombre resuelto (nombre de obra o estudio) y sin email, para que
+    // imprimir/enviar sigan funcionando igual — simplemente no hay a quién
+    // mandarle el mail hasta que se cargue el cliente real.
+    return { cliente: cliente || { razonSocial: clienteNombreFinal || cot.id, email: '' } };
   } catch(e) {
     msg.className='status-msg err'; msg.textContent = 'Error de conexión. El borrador quedó guardado localmente.';
     return null;
@@ -1549,6 +1604,8 @@ async function abrirCot(id, duplicar) {
   cot.comisionArq = c.comisionArq;
   cot.comisionArqPct = (c.comisionArqPct!==undefined && c.comisionArqPct!==null && c.comisionArqPct!=='') ? c.comisionArqPct : 5;
   cot.estudioArq = c.estudioArq || '';
+  cot.estudioId = c.estudioId || '';
+  cot.nombreObra = c.nombreObra || '';
   cot.direccionObra = c.direccionObra || '';
   cot.clienteId = c.clienteId;
   cot.vendedor = c.vendedor;
@@ -1583,7 +1640,8 @@ async function abrirCot(id, duplicar) {
   document.getElementById('inDespMadera').value = cot.despMaderaPct||0;
   document.getElementById('inArq').checked = !!cot.comisionArq;
   document.getElementById('inArqPct').value = cot.comisionArqPct;
-  document.getElementById('inEstudioArq').value = cot.estudioArq;
+  document.getElementById('selEstudio').value = cot.estudioId || '';
+  document.getElementById('inNombreObra').value = cot.nombreObra || '';
   document.getElementById('inDireccionObra').value = cot.direccionObra || '';
   document.getElementById('inNotas').value = cot.notas||'';
   cot.condPago = c.condPago; cot.validez = c.validez; cot.lugarEnt = c.lugarEnt;
@@ -1755,6 +1813,162 @@ async function guardarCliente() {
     limpiarCliForm();
   } catch(e) { msg.className='status-msg err'; msg.textContent='Error de conexión'; }
 }
+
+// ============================================
+// Estudios de arquitectura: lista propia (mismo patrón que Clientes).
+// Se seleccionan en el header de la cotización (no se tipean a mano) para
+// poder agregar comisiones por estudio y ver sus obras en curso.
+// ============================================
+async function cargarEstudios() {
+  try {
+    const r = await API.get({ action:'estudioList', token: currentUser.token });
+    if (r.ok) { ESTUDIOS = r.estudios; renderEstudios(); }
+  } catch(e){}
+}
+
+function nombreEstudio_(id) {
+  const e = ESTUDIOS.find(x=>x.id===id);
+  return e ? e.nombre : '';
+}
+
+// Al elegir un estudio en el header, se autocompleta su % de comisión por
+// defecto (ej. Pacífica 7,5% en vez del 5% general) — sigue editable para
+// esta cotización puntual sin afectar el default del estudio.
+function estudioCambiado() {
+  const id = document.getElementById('selEstudio').value;
+  const e = ESTUDIOS.find(x=>x.id===id);
+  if (e) {
+    document.getElementById('inArqPct').value = (e.comisionPctDefault!==undefined && e.comisionPctDefault!==null) ? e.comisionPctDefault : 5;
+    renderCart();
+  }
+  guardarBorradorLocal();
+}
+
+function renderEstudios() {
+  const sel = document.getElementById('selEstudio');
+  const val = sel.value;
+  sel.innerHTML = '<option value="">— Sin estudio —</option>' +
+    ESTUDIOS.filter(e=>e.activo!==false).map(e=>`<option value="${e.id}">${escHtml_(e.nombre)} (${e.comisionPctDefault}%)</option>`).join('');
+  sel.value = val || cot.estudioId || '';
+  document.getElementById('estList').innerHTML = ESTUDIOS.map(e=>`
+    <div class="cot-row">
+      <div style="flex:1;"><b>${escHtml_(e.nombre)}</b><div class="c-sub">comisión default ${e.comisionPctDefault}% ${e.contacto?'· '+escHtml_(e.contacto):''} ${e.telefono?'· '+escHtml_(e.telefono):''} ${e.activo===false?'· <span style="color:#b33;">inactivo</span>':''}</div></div>
+      <button class="btn btn-ghost" onclick="verResumenEstudio('${e.id}')">📋 Obras y comisiones</button>
+      <button class="btn btn-ghost" onclick="editarEstudio('${e.id}')">Editar</button>
+    </div>`).join('') || '<div style="color:#aaa;padding:14px;">Sin estudios todavía.</div>';
+}
+
+let estEditId = null;
+function abrirNuevoEstudio() { showTab('estudios'); limpiarEstForm(); document.getElementById('eNombre').focus(); }
+function limpiarEstForm() {
+  estEditId = null;
+  ['eNombre','eContacto','eEmail','eTel','eNotas'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('eComPct').value = 5;
+  document.getElementById('estFormTitle').textContent = 'Nuevo estudio de arquitectura';
+  document.getElementById('estMsg').textContent = '';
+}
+function editarEstudio(id) {
+  const e = ESTUDIOS.find(x=>x.id===id); if (!e) return;
+  estEditId = id;
+  document.getElementById('eNombre').value = e.nombre;
+  document.getElementById('eContacto').value = e.contacto || '';
+  document.getElementById('eEmail').value = e.email || '';
+  document.getElementById('eTel').value = e.telefono || '';
+  document.getElementById('eComPct').value = (e.comisionPctDefault!==undefined && e.comisionPctDefault!==null) ? e.comisionPctDefault : 5;
+  document.getElementById('eNotas').value = e.notas || '';
+  document.getElementById('estFormTitle').textContent = 'Editando estudio';
+  showTab('estudios');
+}
+
+async function guardarEstudio() {
+  const msg = document.getElementById('estMsg');
+  const nombre = document.getElementById('eNombre').value.trim();
+  if (!nombre) { msg.className='status-msg err'; msg.textContent='Falta el nombre del estudio.'; return; }
+  msg.className='status-msg'; msg.textContent='Guardando…';
+  const estudio = {
+    id: estEditId,
+    nombre: nombre,
+    contacto: document.getElementById('eContacto').value.trim(),
+    email: document.getElementById('eEmail').value.trim(),
+    telefono: document.getElementById('eTel').value.trim(),
+    comisionPctDefault: parseFloat(document.getElementById('eComPct').value)||5,
+    notas: document.getElementById('eNotas').value.trim()
+  };
+  try {
+    const r = await API.post({ action:'estudioSave', estudio, token: currentUser.token });
+    if (!r.ok) { msg.className='status-msg err'; msg.textContent='Error: '+r.error; return; }
+    msg.textContent = '✓ Estudio guardado';
+    await cargarEstudios();
+    if (!estEditId) { document.getElementById('selEstudio').value = r.estudio.id; estudioCambiado(); showTab('nueva'); }
+    limpiarEstForm();
+  } catch(e) { msg.className='status-msg err'; msg.textContent='Error de conexión'; }
+}
+
+// 📋 Obras en curso y comisiones (pendientes/pagadas) de un estudio —
+// recorre todas las cotizaciones vinculadas a ese estudio, con el estado
+// actual de la obra que generaron (si ya se aprobaron) y un botón para
+// marcar cada comisión como pagada o pendiente.
+async function verResumenEstudio(id) {
+  const card = document.getElementById('estResumenCard');
+  const body = document.getElementById('estResumenBody');
+  card.classList.remove('hidden');
+  document.getElementById('estResumenTitle').textContent = 'Cargando…';
+  body.innerHTML = '';
+  card.scrollIntoView({behavior:'smooth', block:'start'});
+  try {
+    const r = await API.get({ action:'estudioResumen', id, token: currentUser.token });
+    if (!r.ok) { body.innerHTML = '<div class="status-msg err">Error: '+r.error+'</div>'; return; }
+    document.getElementById('estResumenTitle').textContent = '📋 ' + r.estudio.nombre + ' — Obras y comisiones';
+    const totales = `<div style="display:flex;gap:18px;margin-bottom:14px;flex-wrap:wrap;">
+      <div class="estado-badge" style="background:#fff3cd;color:#7a5c00;">Comisión pendiente: USD ${r.totalPendiente.toFixed(2)}</div>
+      <div class="estado-badge" style="background:#d4edda;color:#155724;">Comisión pagada: USD ${r.totalPagada.toFixed(2)}</div>
+    </div>`;
+    const filas = r.items.length === 0 ? '<div style="color:#aaa;padding:14px;">Todavía no tiene cotizaciones vinculadas.</div>' : r.items.map(it => `
+      <div class="cot-row">
+        <div style="flex:1;">
+          <b>${escHtml_(it.cotId)}</b> · ${it.clienteNombre ? escHtml_(it.clienteNombre) : (it.nombreObra ? '<i>' + escHtml_(it.nombreObra) + ' (sin comitente confirmado)</i>' : '—')} · ${escHtml_(it.estadoCot||'')}
+          ${it.obra ? ` · <span style="font-family:var(--font-mono,monospace);">${escHtml_(it.obra.codigo)}</span> (${escHtml_(it.obra.estado)}${it.obra.tipo==='pedido_material'?' · 📦 pedido de material':''})` : ' · <span style="color:#aaa;">sin obra generada todavía</span>'}
+          <div class="c-sub">Total cotizado USD ${Number(it.total||0).toFixed(2)}${it.comisionArq ? ' · comisión ' + it.comisionArqPct + '% = USD ' + Number(it.comisionMonto||0).toFixed(2) : ' · sin comisión'}${it.comisionFechaPago ? ' · pagada el ' + escHtml_(it.comisionFechaPago) : ''}</div>
+        </div>
+        ${it.comisionArq ? `<button class="btn btn-ghost" onclick="toggleComisionEstado('${it.cotId}','${it.comisionEstado==='pagada'?'pendiente':'pagada'}','${id}')">${it.comisionEstado==='pagada' ? '↺ Marcar pendiente' : '✓ Marcar pagada'}</button>` : ''}
+      </div>`).join('');
+    // ★ Bitácora del estudio — la "base de datos de arquis": notas libres
+    // con fecha y quién las escribió, para ir anotando con el tiempo
+    // (cómo prefiere que le cobren, una obra que se cayó, etc.).
+    const notasHtml = (r.comentarios||[]).map(c => `
+      <div style="padding:8px 0;border-bottom:1px solid #eee;font-size:12.5px;">
+        <span style="color:#999;">${escHtml_(c.fecha)} · ${escHtml_(c.usuario)}</span><br>${escHtml_(c.texto).replace(/\n/g,'<br>')}
+      </div>`).join('') || '<div style="color:#aaa;padding:8px 0;">Sin notas todavía.</div>';
+    const bitacora = `
+      <h4 style="margin:20px 0 8px;">📝 Notas del estudio</h4>
+      <div style="display:flex;gap:6px;margin-bottom:10px;">
+        <input type="text" id="estNotaNueva" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font:inherit;" placeholder="Anotar algo sobre este estudio…">
+        <button class="btn btn-ghost" onclick="agregarNotaEstudio('${id}')">Agregar</button>
+      </div>
+      <div>${notasHtml}</div>`;
+    body.innerHTML = totales + filas + bitacora;
+  } catch(e) { body.innerHTML = '<div class="status-msg err">Error de conexión</div>'; }
+}
+
+async function agregarNotaEstudio(id) {
+  const input = document.getElementById('estNotaNueva');
+  const texto = input.value.trim();
+  if (!texto) return;
+  try {
+    const r = await API.post({ action:'estudioComentar', id, texto, token: currentUser.token });
+    if (!r.ok) { alert('Error: '+r.error); return; }
+    verResumenEstudio(id);
+  } catch(e) { alert('Error de conexión'); }
+}
+
+async function toggleComisionEstado(cotId, estado, estudioId) {
+  try {
+    const r = await API.post({ action:'cotComisionEstado', id: cotId, estado, token: currentUser.token });
+    if (!r.ok) { alert('Error: '+r.error); return; }
+    verResumenEstudio(estudioId);
+  } catch(e) { alert('Error de conexión'); }
+}
+
 
 // CUIT → ARCA: 1) backend Apps Script, 2) AFIP directo con reintentos, 3) fuente alternativa
 function pintarCliente(razon, dir, loc, prov) {
