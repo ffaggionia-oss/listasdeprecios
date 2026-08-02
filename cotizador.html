@@ -217,9 +217,15 @@
         <div>
           <label>Cliente <span style="color:#999;font-weight:400">(opcional si todavía no tenés el comitente — cargá el estudio y el nombre de la obra)</span></label>
           <div style="display:flex;gap:6px;">
-            <select id="selCliente" style="flex:1" onchange="guardarBorradorLocal()"></select>
+            <select id="selCliente" style="flex:1" onchange="clienteCambiadoCot()"></select>
             <button class="btn btn-ghost" onclick="abrirNuevoCliente()">+ Nuevo</button>
           </div>
+          <div id="cuitSeleccionado" style="font-size:11.5px;color:#888;margin-top:3px;"></div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <input type="text" id="inCuitBuscar" placeholder="Buscar/crear cliente por CUIT (30-12345678-9)" style="flex:1;font-size:12.5px;">
+            <button class="btn btn-ghost" onclick="buscarCuitCot()">🔍 CUIT</button>
+          </div>
+          <div id="cuitResultado" style="font-size:12px;margin-top:4px;"></div>
         </div>
         <div>
           <label>Nombre de la obra <span style="color:#C9A227;font-weight:700">(interno — para identificarla si no hay comitente todavía)</span></label>
@@ -1327,6 +1333,9 @@ function nuevaCot() {
   document.getElementById('inComVend').value = defaultComVend(vd);
   setPdfFields({});
   document.getElementById('selCliente').value = '';
+  document.getElementById('cuitSeleccionado').textContent = '';
+  document.getElementById('inCuitBuscar').value = '';
+  document.getElementById('cuitResultado').innerHTML = '';
   document.getElementById('cotTitle').textContent = 'Nueva cotización';
   document.getElementById('cotMsg').textContent = '';
   localStorage.removeItem('kk_cot_draft');
@@ -1651,6 +1660,7 @@ async function abrirCot(id, duplicar) {
   document.getElementById('inComVend').value = (c.comVendPct!==undefined && c.comVendPct!==null && c.comVendPct!=='') ? c.comVendPct : defaultComVend(document.getElementById('inVend').value);
   setPdfFields(cot);
   document.getElementById('selCliente').value = cot.clienteId||'';
+  mostrarCuitSeleccionado();
   document.getElementById('cotTitle').textContent = duplicar ? ('Nueva cotización (duplicada de '+c.id+')') : ('Editando ' + c.id);
   document.getElementById('cotMsg').textContent = duplicar ? 'Duplicada con precios vigentes. Guardá para asignarle número nuevo.' : '';
   buildInstUI();
@@ -1743,6 +1753,61 @@ async function eliminarCot(id) {
 }
 
 // ---------- Clientes ----------
+// ★ Al elegir un cliente en la cotización, mostrar su CUIT debajo (si
+// tiene) — antes no se veía en ningún lado de la pantalla de cotizar.
+function clienteCambiadoCot() {
+  guardarBorradorLocal();
+  mostrarCuitSeleccionado();
+}
+function mostrarCuitSeleccionado() {
+  const el = document.getElementById('cuitSeleccionado');
+  const c = CLIENTES.find(x=>x.id===document.getElementById('selCliente').value);
+  el.textContent = (c && c.cuit) ? 'CUIT: ' + c.cuit : '';
+}
+
+// ★ Buscar (o directamente crear) un cliente por CUIT sin salir de la
+// pantalla de cotizar. Primero busca si ya es cliente; si no, consulta
+// ARCA y ofrece darlo de alta con los datos que trae.
+async function buscarCuitCot() {
+  const raw = document.getElementById('inCuitBuscar').value.replace(/\D/g,'');
+  const out = document.getElementById('cuitResultado');
+  if (raw.length !== 11) { out.innerHTML = '<span style="color:#b33;">CUIT inválido (11 dígitos).</span>'; return; }
+  const existente = CLIENTES.find(c => (c.cuit||'').replace(/\D/g,'') === raw);
+  if (existente) {
+    document.getElementById('selCliente').value = existente.id;
+    clienteCambiadoCot();
+    out.innerHTML = '<span style="color:#1a7f37;">✓ Ya es cliente: ' + escHtml_(existente.razonSocial) + ' — seleccionado.</span>';
+    return;
+  }
+  out.innerHTML = 'Buscando en ARCA…';
+  try {
+    const r = await API.get({ action:'cuit', cuit: raw, token: currentUser.token });
+    if (!r.ok) { out.innerHTML = '<span style="color:#b33;">No encontrado en ARCA' + (r.error ? ' (' + escHtml_(r.error) + ')' : '') + '. Podés cargarlo a mano con "+ Nuevo".</span>'; return; }
+    window.__cuitArcaTmp = { cuit: raw, razonSocial: r.razonSocial||'', direccion: r.direccion||'', localidad: r.localidad||'', provincia: r.provincia||'' };
+    out.innerHTML = '<div style="padding:8px;background:#f6f6f6;border-radius:6px;">' +
+      '<b>' + escHtml_(r.razonSocial||'(ARCA no devolvió nombre)') + '</b><br>' +
+      '<span style="color:#666;font-size:11.5px;">' + escHtml_([r.direccion, r.localidad, r.provincia].filter(Boolean).join(', ')) + '</span><br>' +
+      '<button class="btn btn-ghost" style="margin-top:6px;" onclick="crearClienteDesdeArcaCot()">+ Crear cliente con estos datos</button>' +
+      '</div>';
+  } catch(e) { out.innerHTML = '<span style="color:#b33;">Error de conexión con ARCA.</span>'; }
+}
+
+async function crearClienteDesdeArcaCot() {
+  const d = window.__cuitArcaTmp; if (!d) return;
+  const out = document.getElementById('cuitResultado');
+  out.innerHTML = 'Creando cliente…';
+  try {
+    const r = await API.post({ action:'cliSave', cliente: { cuit:d.cuit, razonSocial:d.razonSocial||('CUIT '+d.cuit), direccion:d.direccion, localidad:d.localidad, provincia:d.provincia }, token: currentUser.token });
+    if (!r.ok) { out.innerHTML = '<span style="color:#b33;">Error: '+escHtml_(r.error)+'</span>'; return; }
+    await cargarClientes();
+    document.getElementById('selCliente').value = r.cliente.id;
+    clienteCambiadoCot();
+    out.innerHTML = '<span style="color:#1a7f37;">✓ Cliente creado y seleccionado.</span>';
+    document.getElementById('inCuitBuscar').value = '';
+  } catch(e) { out.innerHTML = '<span style="color:#b33;">Error de conexión.</span>'; }
+}
+
+
 async function cargarClientes() {
   try {
     const r = await API.get({ action:'cliList', token: currentUser.token });
@@ -1756,6 +1821,7 @@ function renderClientes() {
   sel.innerHTML = '<option value="">— Elegir cliente —</option>' +
     CLIENTES.map(c=>`<option value="${c.id}">${c.razonSocial}${c.cuit?' ('+c.cuit+')':''}</option>`).join('');
   sel.value = val || cot.clienteId || '';
+  mostrarCuitSeleccionado();
   document.getElementById('cliList').innerHTML = CLIENTES.map(c=>`
     <div class="cot-row">
       <div style="flex:1;"><b>${c.razonSocial}</b><div class="c-sub">${c.cuit||''} ${c.contacto?'· '+c.contacto:''} ${c.telefono?'· '+c.telefono:''} ${c.email?'· '+c.email:''}</div></div>
