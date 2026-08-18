@@ -1090,7 +1090,13 @@ function agregarItem(i) {
   if (ex && p.con_clip_a===undefined) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); renderCart(); return; }
   const it = {
     idx:i, desc:`${p.madera} ${p.perfil}`, cat:p.cat, medidas:p.medidas, largos:p.largos,
-    u:p.u, precio:p.a, precioLista:p.a, cantReal:1, desp:despPct, cant:1, conClip:false, comentario:''
+    u:p.u, precio:p.a, precioLista:p.a, cantReal:1, desp:despPct, cant:1, conClip:false, comentario:'',
+    // ★ Costo Nac. Mt2 USD (col. S de la lista de precios, o H en Parky) — se
+    // congela acá tal cual está hoy en el producto, para que el informe de
+    // rentabilidad de Nicolás no dependa de que el precio de compra siga
+    // siendo el mismo el día de mañana. Puede venir undefined si la planilla
+    // no tiene ese dato cargado para este producto.
+    costoUn: p.costoNacMt2Usd
   };
   recalcCantFact(it);
   cot.items.push(it);
@@ -1373,7 +1379,7 @@ async function guardarCotInterno_(estadoForzado) {
       action:'cotSave', token: currentUser.token,
       id: cot.id, estado: cot.estado,
       clienteId: cliente ? cliente.id : '', clienteNombre: clienteNombreFinal, nombreObra: nombreObra,
-      items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||''})),
+      items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||'', costoUn:(it.costoUn!==undefined && it.costoUn!==null && it.costoUn!=='') ? it.costoUn : undefined})),
       inst: instSnapshot(),
       instCfg: instCfg(),
       vendedor: cot.vendedor || document.getElementById('inVend').value,
@@ -1630,9 +1636,15 @@ async function abrirCot(id, duplicar) {
     if (it.cat==='Instalación') idx = -1;
     let precio = it.precio;
     let precioLista = (it.precioLista!==undefined && it.precioLista!==null && it.precioLista!=='') ? parseFloat(it.precioLista) : undefined;
+    // ★ Costo Nac. Mt2 USD: al duplicar, se toma el costo VIGENTE del producto
+    // (igual que se hace con el precio de lista) — no tiene sentido arrastrar
+    // un costo viejo a una cotización nueva. Al reabrir para editar (no
+    // duplicar), se conserva el costo que ya tenía guardado esa línea.
+    let costoUn = it.costoUn;
     if (duplicar && idx>=0) {
       precio = (it.conClip && D[idx].con_clip_a!==undefined) ? D[idx].con_clip_a : D[idx].a;
       precioLista = precio; // duplicar toma precios vigentes de lista (resetea modificaciones)
+      costoUn = D[idx].costoNacMt2Usd;
     }
     if (tieneInstCfg && / — instalación incluida$/.test(String(it.desc||'')) && !duplicar) {
       // quitar la parte de instalación del precio guardado: se recalcula en vivo
@@ -1643,7 +1655,7 @@ async function abrirCot(id, duplicar) {
     if (precioLista === undefined) precioLista = precio; // cotizaciones viejas sin lista guardada: sin falso aviso
     return { idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, precioLista, cant:it.cant,
       cantReal: (it.cantReal!==undefined ? it.cantReal : it.cant), desp: it.desp||0, conClip:!!it.conClip,
-      comentario: (duplicar ? '' : (it.comentario || '')) };
+      comentario: (duplicar ? '' : (it.comentario || '')), costoUn };
   });
   document.getElementById('inDesc').value = cot.descPct||0;
   document.getElementById('inDespMadera').value = cot.despMaderaPct||0;
