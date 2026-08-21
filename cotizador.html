@@ -1599,6 +1599,7 @@ function renderCotList() {
         <button class="btn btn-ghost" onclick="abrirCot('${c.id}')">Abrir</button>
         <button class="btn btn-ghost" onclick="abrirCot('${c.id}', true)">Duplicar</button>
         <button class="btn btn-dark" onclick="pdfDesdeLista('${c.id}')">PDF</button>
+        ${currentUser.rol==='gerencia' ? `<button class="btn btn-ghost" title="Manda a Nicolás costo de madera, instalación y margen — NO aprueba ni crea obra" onclick="enviarRentabilidad('${c.id}')">💰 Rentabilidad</button>` : ''}
         <button class="btn btn-danger" onclick="eliminarCot('${c.id}')">✕</button>
       </div>
     </div>
@@ -2370,6 +2371,30 @@ async function pdfDesdeLista(id) {
   const cli = CLIENTES.find(c=>c.id===r.cot.clienteId);
   buildPrint(r.cot, cli || { razonSocial: r.cot.clienteNombre });
   imprimirConNombre_(nombreArchivoCot_((cli && cli.razonSocial) || r.cot.clienteNombre, r.cot.id));
+}
+
+// ★ Informe de rentabilidad preliminar (21/08/2026) — le manda a Nicolás
+// (+ Franco como testigo) el costo de madera, mano de obra y margen bruto
+// de una cotización YA GUARDADA, sin aprobarla ni crear ninguna obra en el
+// Portal. Pensado para negociar el precio final antes de cerrar.
+async function enviarRentabilidad(id) {
+  if (!confirm('¿Mandarle a Nicolás el informe de rentabilidad de ' + id + '?\n\nNo aprueba la cotización ni crea ninguna obra — es solo informativo.')) return;
+  const btn = event.target;
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+  try {
+    const r = await API.post({ action:'cotEnviarRentabilidad', id, token: currentUser.token });
+    if (!r.ok) { alert('Error: ' + r.error); return; }
+    cotSuccessBanner_ = 'Informe de rentabilidad de ' + id + ' enviado a ' + r.destinatario +
+      ' — margen bruto USD ' + Number(r.margenBruto).toFixed(2) + ' (' + Math.round(r.margenPct*1000)/10 + '%)';
+    renderCotList();
+  } catch (e) {
+    alert('Error de conexión');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
 }
 
 // ---------- Arranque ----------
