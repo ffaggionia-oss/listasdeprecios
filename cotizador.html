@@ -119,6 +119,8 @@
   .flag-arq { font-size:10px; color:#C9A227; font-weight:700; }
   .seg-badge { background:#b33; color:#fff; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px; }
   .seg-ok { color:#aaa; font-size:10px; }
+  .com-alert { display:block; font-size:11px; margin-top:3px; padding:4px 8px; background:#fff3cd; border-left:3px solid #c77700; border-radius:3px; color:#7a5c00; cursor:pointer; }
+  .com-alert b { color:#5c4400; }
   .seg-banner { background:#FDECEC; border:1px solid #e0b8b8; color:#8a2b2b; padding:10px 12px; border-radius:8px; margin-bottom:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:13px; }
   .seg-banner-ok { background:#E8F5E9; border:1px solid #a5d6a7; color:#2e5d34; padding:10px 12px; border-radius:8px; margin-bottom:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:13px; }
 
@@ -1480,6 +1482,7 @@ async function cargarCots() {
   try {
     const r = await API.get({ action:'cotList', token: currentUser.token });
     if (r.ok) { COTS = r.cots; renderCotList(); }
+    else { document.getElementById('cotList').innerHTML = '<div style="color:#b33;padding:14px;">Error: ' + (r.error || 'sin detalle') + '</div>'; }
   } catch(e){ document.getElementById('cotList').innerHTML = '<div style="color:#b33;padding:14px;">Error de conexión</div>'; }
 }
 
@@ -1587,6 +1590,7 @@ function renderCotList() {
         ${c.comisionArq?'<span class="flag-arq">◆ arq. '+(c.comisionArqPct||5)+'%'+(c.estudioArq?' — '+escHtml_(c.estudioArq):'')+'</span>':''}
         ${seg ? '<span class="seg-badge">⏰ '+dias+' días sin movimiento</span>' : (terminal ? '' : '<span class="seg-ok">hace '+dias+' d</span>')}
         <div class="c-sub">${c.fecha} · ${c.vendedor ? c.vendedor+' · ' : ''}${c.resumen}</div>
+        ${c.ultimoComentario ? `<div class="com-alert" title="Ver todos los comentarios" onclick="toggleComentarios('${c.id}')">💬 <b>${escHtml_(c.ultimoComentario.usuario)}:</b> ${escHtml_((c.ultimoComentario.texto||'').slice(0,140))}${(c.ultimoComentario.texto||'').length>140?'…':''}</div>` : ''}
       </div>
       <div style="font-weight:800;white-space:nowrap;">USD ${Number(c.total).toFixed(2)}</div>
       ${esReemp
