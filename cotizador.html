@@ -309,6 +309,7 @@
 
     <div class="card" id="cardInst">
       <h3>🔧 Instalación / Colocación <span style="font-size:11px;color:#999;font-weight:400">· costos y consumos del Maestro de Precios — solo lectura</span></h3>
+      <div id="instMaestroError" class="hidden" style="color:#b33;font-size:12px;margin-bottom:8px;"></div>
       <div id="instOff">
         <button class="btn btn-dark" onclick="instToggle(true)">＋ Cotizar con instalación</button>
         <span style="font-size:12px;color:#999;margin-left:8px;">Si no la activás, se cotiza solo producto.</span>
@@ -565,6 +566,7 @@ let D = [];  // se carga en vivo desde el Sheet de precios (getProductos)
 // Fórmula = la del portal (h3.js): MO ajustada ADITIVA, fiscal 15% mín 300.
 // ============================================
 let MAESTRO = null; // {tipos, materiales, perifericos, escaladores, reductores, segmentos?}
+let maestroErrorMsg = ''; // ★ vacío = sin Maestro por rol (ventas, esperado); con texto = falló la carga (mostrar aviso, no ocultar mudo)
 
 function instDefault() {
   return { on:false, m2:0, modo:'sep', targetK:0, tiposSel:{}, mats:{}, perif:{}, esc:{}, red:{},
@@ -789,7 +791,24 @@ function instTargetVis() {
 function buildInstUI() {
   const I = instEnsure();
   const card = document.getElementById('cardInst');
-  if (!MAESTRO) { card.classList.add('hidden'); return; }
+  const errEl = document.getElementById('instMaestroError');
+  if (!MAESTRO) {
+    if (maestroErrorMsg) {
+      // ★ Falló la carga (no es que el rol no tenga acceso) — se avisa en
+      // vez de ocultar la card entera en silencio, que es justo el bug que
+      // hacía parecer "se perdieron los datos de instalación" cuando en
+      // realidad sólo falló el fetch del Maestro (ver getMaestro).
+      card.classList.remove('hidden');
+      errEl.classList.remove('hidden');
+      errEl.innerHTML = '⚠ ' + escHtml_(maestroErrorMsg) + ' <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;" onclick="reintentarMaestro()">Reintentar</button>';
+      document.getElementById('instOff').classList.add('hidden');
+      document.getElementById('instBody').classList.add('hidden');
+    } else {
+      card.classList.add('hidden');
+    }
+    return;
+  }
+  errEl.classList.add('hidden');
   card.classList.remove('hidden');
   document.getElementById('instOff').classList.toggle('hidden', I.on);
   document.getElementById('instBody').classList.toggle('hidden', !I.on);
@@ -1032,9 +1051,24 @@ async function cargarProductos() {
 async function cargarMaestro() {
   try {
     const r = await API.get({ action:'getMaestro', token: currentUser.token });
-    if (r.ok) MAESTRO = { tipos:r.tipos||[], materiales:r.materiales||[], perifericos:r.perifericos||[],
-                          escaladores:r.escaladores||[], reductores:r.reductores||[], segmentos:r.segmentos||[] };
-  } catch(e) { MAESTRO = null; }
+    if (r.ok) {
+      MAESTRO = { tipos:r.tipos||[], materiales:r.materiales||[], perifericos:r.perifericos||[],
+                  escaladores:r.escaladores||[], reductores:r.reductores||[], segmentos:r.segmentos||[] };
+      maestroErrorMsg = '';
+    } else {
+      MAESTRO = null;
+      // "Tu rol no tiene acceso" es esperado para ventas — no es una falla, no hace falta avisar.
+      maestroErrorMsg = (r.error && r.error.indexOf('no tiene acceso') === -1) ? r.error : '';
+    }
+  } catch(e) {
+    MAESTRO = null;
+    maestroErrorMsg = 'No se pudo cargar el Maestro de Precios (error de conexión) — la sección de Instalación no está disponible hasta que se pueda reintentar.';
+  }
+}
+async function reintentarMaestro() {
+  document.getElementById('instMaestroError').textContent = 'Reintentando…';
+  await cargarMaestro();
+  buildInstUI();
 }
 
 // ---------- Tabs ----------
