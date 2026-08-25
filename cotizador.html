@@ -431,6 +431,12 @@
       <div style="margin-top:16px;">
         <label>Aclaraciones <span style="color:#999;font-weight:400">(para el cliente — van al final del PDF)</span></label>
         <textarea id="inNotas" rows="4" style="width:100%;font:inherit;padding:8px;" placeholder="Ej: entrega en obra, plazo 30 días, cualquier aclaración para el cliente…"></textarea>
+        <div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="inMemoContexto" placeholder="Opcional: algo puntual de esta obra para que la IA lo tenga en cuenta (ej. entrega en 8vo piso, subir por ascensor)" style="flex:1;min-width:220px;">
+          <button class="btn btn-ghost" onclick="generarMemoIA()">✨ Generar con IA</button>
+        </div>
+        <div class="status-msg" id="memoStatus" style="margin-top:4px;"></div>
+        <div style="font-size:11px;color:#999;margin-top:2px;">Genera un borrador de texto (qué incluye, qué NO incluye, y las condiciones fijas de cómputo/desperdicio) y lo pone en el recuadro de arriba — revisalo y editalo antes de guardar, no se manda solo.</div>
       </div>
 
       <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
@@ -479,7 +485,9 @@
           </div>
         </div>
         <div><label>Razón social / Nombre</label><input type="text" id="cRazon" style="width:100%"></div>
+        <div><label>DNI <span style="color:#999;font-weight:400">(para clientes particulares, sin CUIT)</span></label><input type="text" id="cDni" style="width:100%"></div>
         <div><label>Contacto</label><input type="text" id="cContacto" style="width:100%"></div>
+        <div><label>Cargo del contacto <span style="color:#999;font-weight:400">(ej. Dueño, Arquitecto a cargo)</span></label><input type="text" id="cCargoContacto" style="width:100%"></div>
         <div><label>Email</label><input type="text" id="cEmail" style="width:100%"></div>
         <div><label>Teléfono</label><input type="text" id="cTel" style="width:100%"></div>
         <div><label>Dirección</label><input type="text" id="cDir" style="width:100%"></div>
@@ -1516,6 +1524,36 @@ async function guardarCotInterno_(estadoForzado) {
 
 // Botón "Guardar borrador": siempre deja el estado en Borrador, sin
 // imprimir ni enviar nada. Es el único camino hacia el estado Borrador.
+// ★ Genera un borrador de texto para "Aclaraciones" con IA: resumen de qué
+// se cotiza (redactado por Claude) + lista de qué NO incluye (calculada
+// acá, comparando contra todos los tipos de instalación del Maestro — no
+// depende de que la IA se acuerde) + los dos párrafos fijos de
+// responsabilidad (cómputo del cliente, desperdicio no garantizado).
+// Solo LLENA el recuadro — no guarda ni manda nada; Franco lo revisa y
+// edita antes de guardar/imprimir/enviar, como cualquier otro texto ahí.
+async function generarMemoIA() {
+  const status = document.getElementById('memoStatus');
+  const items = itemsView().filter(it => !it._pseudo);
+  if (!items.length) { status.className = 'status-msg err'; status.textContent = 'Agregá al menos un producto antes de generar el memo.'; return; }
+  status.className = 'status-msg';
+  status.textContent = 'Generando (puede tardar unos segundos)…';
+  try {
+    const r = await API.post({
+      action: 'cotGenerarMemo', token: currentUser.token,
+      items: items.map(it => ({ desc: it.desc, medidas: it.medidas, cant: it.cant, u: it.u })),
+      inst: instSnapshot(),
+      contexto: document.getElementById('inMemoContexto').value.trim()
+    });
+    if (!r.ok) { status.className = 'status-msg err'; status.textContent = 'Error: ' + r.error; return; }
+    const el = document.getElementById('inNotas');
+    el.value = (el.value ? el.value.trim() + '\n\n' : '') + r.memo;
+    cot.notas = el.value;
+    status.textContent = '✓ Generado — revisalo y editalo antes de guardar.';
+  } catch (e) {
+    status.className = 'status-msg err'; status.textContent = 'Error de conexión.';
+  }
+}
+
 async function guardarComoBorrador() {
   const res = await guardarCotInterno_('Borrador');
   if (!res) return;
@@ -1990,7 +2028,10 @@ async function guardarCliente() {
     direccion: document.getElementById('cDir').value.trim(),
     localidad: document.getElementById('cLoc').value.trim(),
     provincia: document.getElementById('cProv').value.trim(),
-    condIva: document.getElementById('cCondIva').value
+    condIva: document.getElementById('cCondIva').value,
+    dni: document.getElementById('cDni').value.trim(),
+    cargoContacto: document.getElementById('cCargoContacto').value.trim(),
+    estudioId: document.getElementById('cEstudioId').value
   };
   try {
     const r = await API.post({ action:'cliSave', cliente, token: currentUser.token });
