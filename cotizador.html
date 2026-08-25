@@ -244,14 +244,14 @@
           </div>
         </div>
         <div>
-          <label>Estudio de arquitectura <span style="color:#C9A227;font-weight:700">(interno, no va al PDF)</span></label>
+          <label>Estudio de arquitectura <span style="color:#999;font-weight:400">(el nombre va al PDF; la comisión es interna)</span></label>
           <div style="display:flex;gap:6px;">
             <select id="selEstudio" style="flex:1" onchange="estudioCambiado()"></select>
             <button class="btn btn-ghost" onclick="abrirNuevoEstudio()">+ Nuevo</button>
           </div>
         </div>
         <div>
-          <label>Dirección de la obra <span style="color:#C9A227;font-weight:700">(interno, no va al PDF)</span></label>
+          <label>Dirección de la obra <span style="color:#999;font-weight:400">(va al PDF)</span></label>
           <input type="text" id="inDireccionObra" style="width:100%" placeholder="Ubicación del sitio de trabajo — si es distinta a la dirección fiscal del cliente" oninput="guardarBorradorLocal()">
         </div>
         <div>
@@ -429,7 +429,7 @@
       </div>
 
       <div style="margin-top:16px;">
-        <label>Notas / observaciones <span style="color:#999;font-weight:400">(para el cliente — van al final del PDF)</span></label>
+        <label>Aclaraciones <span style="color:#999;font-weight:400">(para el cliente — van al final del PDF)</span></label>
         <textarea id="inNotas" rows="4" style="width:100%;font:inherit;padding:8px;" placeholder="Ej: entrega en obra, plazo 30 días, cualquier aclaración para el cliente…"></textarea>
       </div>
 
@@ -1543,7 +1543,7 @@ async function guardarImprimirEnviar() {
   buildPrint({ id:cot.id, items:itemsView(), inst:instSnapshot(), descPct:cot.descPct, notas:cot.notas, vendedor:cot.vendedor,
     condPago:cot.condPago, validez:cot.validez, lugarEnt:cot.lugarEnt,
     plazoEnt:cot.plazoEnt, transEnt:cot.transEnt, ivaPct:cot.ivaPct, tc:cot.tc,
-    estudioArq:cot.estudioArq, nombreObra:cot.nombreObra }, cliente);
+    estudioArq:cot.estudioArq, nombreObra:cot.nombreObra, direccionObra:cot.direccionObra }, cliente);
   imprimirConNombre_(nombreArchivoCot_(cliente.razonSocial, cot.id));
 
   const cotIdTerminada = cot.id; // se guarda antes de limpiar el formulario
@@ -2409,6 +2409,7 @@ function buildPrint(c, clienteObj) {
         ${field('Transporte', transEnt)}
         ${c.estudioArq ? field('Estudio de Arquitectura', c.estudioArq) : ''}
         ${c.nombreObra ? field('Obra', c.nombreObra) : ''}
+        ${c.direccionObra ? field('Dirección de la obra', c.direccionObra, true) : ''}
       </div>
     </div>
 
@@ -2441,7 +2442,7 @@ function buildPrint(c, clienteObj) {
       </div>
     </div>
 
-    <div class="pr-obs"><b>Observaciones</b>${c.notas || '—'}</div>
+    <div class="pr-obs"><b>Aclaraciones</b>${c.notas || '—'}</div>
 
     <div class="pr-cond">
       Por favor revise nuestros Términos y Condiciones de Compra y Límites de Garantía en el siguiente enlace:
