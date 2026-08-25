@@ -1124,7 +1124,7 @@ function renderProdList() {
   const el = document.getElementById('prodList');
   let list = D.map((p,i)=>({p,i}));
   if (q) list = list.filter(({p}) => [p.cat,p.madera,p.perfil,p.linea,p.medidas].join(' ').toLowerCase().includes(q));
-  el.innerHTML = list.slice(0,80).map(({p,i}) => `
+  el.innerHTML = list.slice(0,300).map(({p,i}) => `
     <div class="prod-row" onclick="agregarItem(${i})">
       <div>
         <div class="p-name">${p.madera} · ${p.perfil}${p.super?'<span class="badge-super">🔷</span>':p.special?'<span class="badge-fav">⭐</span>':''}</div>
