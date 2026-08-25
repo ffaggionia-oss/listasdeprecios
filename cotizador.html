@@ -2492,13 +2492,13 @@ function buildPrint(c, clienteObj) {
       <div class="pr-sec-t">Cliente</div>
       <div class="pr-grid">
         ${field('Señor/es', cli.razonSocial)}
-        ${field('CUIT', cli.cuit)}
+        ${cli.cuit ? field('CUIT', cli.cuit) : (cli.dni ? field('DNI', cli.dni) : '')}
         ${field('Domicilio', cli.direccion)}
         ${field('Localidad', cli.localidad)}
         ${field('Provincia', cli.provincia)}
         ${field('Correo electrónico', cli.email)}
         ${field('Teléfono', cli.telefono)}
-        ${field('Contacto', cli.contacto)}
+        ${field('Contacto', cli.contacto + (cli.cargoContacto ? ' (' + cli.cargoContacto + ')' : ''))}
         ${field('Condición IVA', cli.condIva)}
       </div>
     </div>
