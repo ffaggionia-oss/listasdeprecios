@@ -1519,15 +1519,13 @@ async function guardarCotInterno_(estadoForzado) {
 async function guardarComoBorrador() {
   const res = await guardarCotInterno_('Borrador');
   if (!res) return;
-  document.getElementById('cotMsg').textContent = '✓ Guardada como borrador (' + cot.id + ')';
-
-  // Cotización guardada: limpiamos el formulario y vamos al seguimiento
-  // (solapa "Guardadas") para que la próxima vez que se entre a cotizar
-  // arranque siempre en blanco.
-  cotSuccessBanner_ = 'Guardada como borrador (' + cot.id + ').';
-  nuevaCot();
+  document.getElementById('cotMsg').textContent = '✓ Guardada como borrador (' + cot.id + ') — ya podés subir documentos acá abajo.';
+  // ★ 2026-08-25: antes esto limpiaba el formulario y saltaba a "Guardadas"
+  // apenas guardaba, así que nunca había chance de usar la sección
+  // Documentos (necesita cot.id, que quedaba pisado al instante). Ahora se
+  // queda en la cotización recién guardada; "Limpiar / nueva" sigue
+  // disponible si se quiere arrancar una en blanco.
   renderCotList();
-  showTab('lista');
 }
 
 // Botón único "Guardar / Imprimir / Enviar": guarda, imprime (o genera
