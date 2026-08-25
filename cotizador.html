@@ -208,6 +208,7 @@
   <button class="tab" id="tab-lista" onclick="showTab('lista')">📋 Guardadas</button>
   <button class="tab" id="tab-clientes" onclick="showTab('clientes')">👤 Clientes</button>
   <button class="tab" id="tab-estudios" onclick="showTab('estudios')">🏛 Estudios</button>
+  <button class="tab hidden" id="tab-catalogo" onclick="showTab('catalogo')">📚 Catálogo</button>
 </div>
 <main>
 
@@ -542,6 +543,19 @@
     <div class="card hidden" id="estResumenCard">
       <h3 id="estResumenTitle">Obras y comisiones</h3>
       <div id="estResumenBody"></div>
+    </div>
+  </div>
+
+  <!-- ===== TAB CATÁLOGO (solo Gerencia) ===== -->
+  <div id="pane-catalogo" class="hidden">
+    <div class="card">
+      <h3>📚 Catálogo completo</h3>
+      <div style="font-size:12.5px;color:#666;margin-bottom:10px;">
+        Acá está TODO el catálogo (no solo los favoritos que ve el vendedor). Tildá para aprobar/ocultar qué se muestra por defecto en el cotizador.
+      </div>
+      <input type="text" id="catSearch" placeholder="Buscar por madera, perfil, medidas… (mínimo 2 caracteres)" oninput="buscarCatalogo()" style="width:100%;">
+      <div class="status-msg" id="catStatus" style="margin-top:6px;"></div>
+      <div id="catList" style="margin-top:12px;"></div>
     </div>
   </div>
 
@@ -1047,6 +1061,7 @@ async function iniciarApp() {
   document.getElementById('viewLogin').classList.add('hidden');
   document.getElementById('viewApp').classList.remove('hidden');
   document.getElementById('userName').textContent = currentUser.usuario;
+  document.getElementById('tab-catalogo').classList.toggle('hidden', currentUser.rol !== 'gerencia');
   traerTC(true);
   if (!localStorage.getItem('kk_cot_draft')) {
     const vd0 = currentUser.usuario.indexOf('Christian') === 0 ? 'Christian Holler' : 'Franco Faggioni';
@@ -1107,10 +1122,69 @@ async function reintentarMaestro() {
 
 // ---------- Tabs ----------
 function showTab(t) {
-  ['nueva','lista','clientes','estudios'].forEach(x => {
+  ['nueva','lista','clientes','estudios','catalogo'].forEach(x => {
     document.getElementById('pane-'+x).classList.toggle('hidden', x!==t);
     document.getElementById('tab-'+x).classList.toggle('active', x===t);
   });
+  if (t === 'catalogo' && !CATALOGO.cargado) cargarCatalogo();
+}
+
+// ---------- Catálogo completo (solo Gerencia) ----------
+// Todo el catálogo (favoritos y no favoritos) para aprobar/ocultar qué se
+// muestra por default en el cotizador — ver getProductos(todos=1,q=...) y
+// toggleFavoritoProducto en el backend.
+const CATALOGO = { cargado: false };
+let catalogoTimer_ = null;
+
+function cargarCatalogo() {
+  CATALOGO.cargado = true;
+  document.getElementById('catList').innerHTML = '<div style="color:#aaa;padding:14px;">Escribí arriba para buscar en todo el catálogo (favoritos y no favoritos).</div>';
+}
+
+function buscarCatalogo() {
+  clearTimeout(catalogoTimer_);
+  catalogoTimer_ = setTimeout(ejecutarBusquedaCatalogo, 350);
+}
+
+async function ejecutarBusquedaCatalogo() {
+  const q = document.getElementById('catSearch').value.trim();
+  const status = document.getElementById('catStatus');
+  const list = document.getElementById('catList');
+  if (q.length < 2) {
+    list.innerHTML = '<div style="color:#aaa;padding:14px;">Escribí al menos 2 caracteres.</div>';
+    status.textContent = '';
+    return;
+  }
+  status.textContent = 'Buscando…';
+  try {
+    const r = await API.get({ action:'getProductos', todos:'1', q, token: currentUser.token });
+    if (!r.ok) { status.className = 'status-msg err'; status.textContent = 'Error: ' + r.error; return; }
+    status.textContent = r.cortado ? 'Mostrando los primeros 60 resultados — refiná la búsqueda si no encontrás lo que buscás.' : (r.productos.length + ' resultado(s).');
+    list.innerHTML = r.productos.map(p => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #333;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;">
+          <input type="checkbox" ${p._favorito ? 'checked' : ''} onchange="togglearFavorito(this, ${JSON.stringify({hoja:p._hoja, fila:p._fila, especialId:p.especialId}).replace(/"/g,'&quot;')})">
+          Favorito
+        </label>
+        <div style="flex:1;">
+          <b>${escHtml_(p.cat)}</b> · ${escHtml_(p.madera||'')} · ${escHtml_(p.perfil||'')}
+          <div class="c-sub">${escHtml_(p.medidas||'')} ${p.largos && p.largos !== '—' ? '· '+escHtml_(p.largos) : ''}</div>
+        </div>
+      </div>`).join('') || '<div style="color:#aaa;padding:14px;">Sin resultados.</div>';
+  } catch(e) {
+    status.className = 'status-msg err'; status.textContent = 'Error de conexión.';
+  }
+}
+
+async function togglearFavorito(chk, ref) {
+  chk.disabled = true;
+  try {
+    const r = await API.post({ action:'toggleFavoritoProducto', token: currentUser.token, hoja: ref.hoja, fila: ref.fila, especialId: ref.especialId });
+    if (!r.ok) { alert('Error: ' + r.error); chk.checked = !chk.checked; }
+  } catch(e) {
+    alert('Error de conexión.'); chk.checked = !chk.checked;
+  }
+  chk.disabled = false;
 }
 
 // ---------- Productos ----------
