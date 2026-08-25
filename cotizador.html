@@ -255,14 +255,6 @@
           <input type="text" id="inDireccionObra" style="width:100%" placeholder="Ubicación del sitio de trabajo — si es distinta a la dirección fiscal del cliente" oninput="guardarBorradorLocal()">
         </div>
         <div>
-          <label>Notas / observaciones (van al PDF)</label>
-          <input type="text" id="inNotas" style="width:100%" placeholder="Ej: entrega en obra, plazo 30 días…">
-        </div>
-        <div style="grid-column:1 / -1;">
-          <label>Aclaraciones internas <span style="color:#C9A227;font-weight:700">(interno, NUNCA va al PDF — para vos y tu equipo, para saber después qué pasó)</span></label>
-          <textarea id="inNotasInternas" rows="5" style="width:100%;font:inherit;padding:8px;" placeholder="Ej: cliente pidió esperar hasta fin de mes para confirmar, dijo que el precio de la competencia es más bajo, avisar a Paco de la visita del jueves…"></textarea>
-        </div>
-        <div>
           <label>Condición de pago</label>
           <input type="text" list="dlCondPago" id="inCondPago" style="width:100%" value="80% adelantado + 20% previo a la entrega del material">
           <datalist id="dlCondPago"></datalist>
@@ -434,6 +426,11 @@
           </div>
           <div id="redondeoMsg" style="font-size:11px;margin-top:4px;"></div>
         </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <label>Notas / observaciones <span style="color:#999;font-weight:400">(para el cliente — van al final del PDF)</span></label>
+        <textarea id="inNotas" rows="4" style="width:100%;font:inherit;padding:8px;" placeholder="Ej: entrega en obra, plazo 30 días, cualquier aclaración para el cliente…"></textarea>
       </div>
 
       <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
@@ -1000,7 +997,7 @@ let cotSuccessBanner_ = '';
 let cot = nuevaCotObj();
 
 function nuevaCotObj() {
-  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', estudioId:'', nombreObra:'', direccionObra:'', notas:'', notasInternas:'', inst: instDefault(), adjuntos:[] };
+  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', estudioId:'', nombreObra:'', direccionObra:'', notas:'', inst: instDefault(), adjuntos:[] };
 }
 
 // ---------- Login ----------
@@ -1382,7 +1379,6 @@ function guardarBorradorLocal() {
   cot.nombreObra = document.getElementById('inNombreObra').value;
   cot.direccionObra = document.getElementById('inDireccionObra').value;
   cot.notas = document.getElementById('inNotas').value;
-  cot.notasInternas = document.getElementById('inNotasInternas').value;
   cot.vendedor = document.getElementById('inVend').value;
   cot.comVendPct = parseFloat(document.getElementById('inComVend').value)||0;
   cot.condPago = document.getElementById('inCondPago').value;
@@ -1408,7 +1404,6 @@ function restaurarBorradorLocal() {
       document.getElementById('inNombreObra').value = cot.nombreObra||'';
       document.getElementById('inDireccionObra').value = cot.direccionObra||'';
       document.getElementById('inNotas').value = cot.notas||'';
-      document.getElementById('inNotasInternas').value = cot.notasInternas||'';
       document.getElementById('inVend').value = cot.vendedor || 'Franco Faggioni';
       document.getElementById('inComVend').value = (cot.comVendPct!==undefined && cot.comVendPct!==null && cot.comVendPct!=='') ? cot.comVendPct : defaultComVend(document.getElementById('inVend').value);
       setPdfFields(cot);
@@ -1445,7 +1440,6 @@ function nuevaCot() {
   document.getElementById('inNombreObra').value = '';
   document.getElementById('inDireccionObra').value = '';
   document.getElementById('inNotas').value = '';
-  document.getElementById('inNotasInternas').value = '';
   const vd = (currentUser && currentUser.usuario === 'Franco') ? 'Franco Faggioni' : 'Christian Holler';
   document.getElementById('inVend').value = vd;
   document.getElementById('inComVend').value = defaultComVend(vd);
@@ -1497,7 +1491,7 @@ async function guardarCotInterno_(estadoForzado) {
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
       padreId: cot.padreId || '',
-      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, comisionArqPct: cot.comisionArqPct||0, estudioId: cot.estudioId||'', direccionObra: cot.direccionObra||'', notas: cot.notas, notasInternas: cot.notasInternas||'',
+      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, comisionArqPct: cot.comisionArqPct||0, estudioId: cot.estudioId||'', direccionObra: cot.direccionObra||'', notas: cot.notas,
       condPago: cot.condPago, validez: cot.validez, lugarEnt: cot.lugarEnt,
       plazoEnt: cot.plazoEnt, transEnt: cot.transEnt, ivaPct: cot.ivaPct, tc: cot.tc
     });
@@ -1731,7 +1725,6 @@ async function abrirCot(id, duplicar) {
   cot.estado = duplicar ? 'Borrador' : c.estado;
   cot.adjuntos = duplicar ? [] : (c.adjuntos || []); // los documentos no se copian al duplicar/versionar — quedan ligados a la cotización original
   cot.notas = c.notas;
-  cot.notasInternas = c.notasInternas || '';
   cot.descPct = c.descPct;
   cot.despMaderaPct = c.despMaderaPct || 0;
   cot.comisionArq = c.comisionArq;
@@ -1783,7 +1776,6 @@ async function abrirCot(id, duplicar) {
   document.getElementById('inNombreObra').value = cot.nombreObra || '';
   document.getElementById('inDireccionObra').value = cot.direccionObra || '';
   document.getElementById('inNotas').value = cot.notas||'';
-  document.getElementById('inNotasInternas').value = cot.notasInternas||'';
   cot.condPago = c.condPago; cot.validez = c.validez; cot.lugarEnt = c.lugarEnt;
   cot.plazoEnt = c.plazoEnt; cot.transEnt = c.transEnt; cot.ivaPct = c.ivaPct; cot.tc = c.tc;
   cot.comVendPct = c.comVendPct;
