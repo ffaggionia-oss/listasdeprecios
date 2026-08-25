@@ -502,6 +502,9 @@
             <option>Exento</option>
           </select>
         </div>
+        <div><label>Estudio de arquitectura <span style="color:#999;font-weight:400">(si este cliente viene de un estudio, queda asociado siempre)</span></label>
+          <select id="cEstudioId" style="width:100%"><option value="">— Ninguno —</option></select>
+        </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:12px;">
         <button class="btn btn-gold" onclick="guardarCliente()">💾 Guardar cliente</button>
@@ -563,6 +566,18 @@
     <div style="display:flex;gap:10px;justify-content:flex-end;">
       <button class="btn-sec" onclick="cerrarModalAprobar()">Cancelar</button>
       <button class="btn" id="apBtnOk" onclick="confirmarAprobacion()">✓ Aprobar y enviar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalDestinatarioMail" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;padding:22px;">
+    <h3 style="margin:0 0 4px;">¿A quién le mandamos la cotización?</h3>
+    <div style="font-size:12.5px;color:#666;margin-bottom:14px;">Hay más de un email cargado. Elegí a quién(es) enviar.</div>
+    <div id="destOpciones" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn-sec" onclick="document.getElementById('modalDestinatarioMail').classList.add('hidden')">Cancelar</button>
+      <button class="btn" onclick="confirmarDestinatarioMail()">✉ Enviar</button>
     </div>
   </div>
 </div>
@@ -1571,6 +1586,37 @@ async function guardarComoBorrador() {
 // tiene email cargado, lo manda también por mail. Queda en estado
 // Enviada — salvo que ya estuviera en un estado terminal (Aprobada,
 // Perdida, Reemplazada), que no se debe pisar por reimprimir/reenviar.
+let pendienteMailCot_ = null;
+async function enviarMailCot_(cotId, razonSocial, htmlPdf, emails, msg) {
+  const emailStr = emails.join(',');
+  msg.textContent = '✓ Guardada e impresa como ' + cotId + ' · enviando por mail a ' + emailStr + '…';
+  try {
+    const r2 = await API.post({
+      action:'cotEnviarCliente', token: currentUser.token,
+      id: cotId, emailCliente: emailStr, clienteNombre: razonSocial, htmlPdf
+    });
+    if (r2.ok) {
+      msg.textContent = '✓ Guardada, impresa y enviada por mail a ' + emailStr + ' (' + cotId + ')';
+      cotSuccessBanner_ = 'Guardada, impresa y enviada por mail a ' + emailStr + ' (' + cotId + ').';
+    } else {
+      msg.className='status-msg err'; msg.textContent = '✓ Guardada e impresa (' + cotId + '), pero el mail falló: ' + r2.error;
+      cotSuccessBanner_ = 'Guardada e impresa (' + cotId + '), pero el mail falló: ' + r2.error;
+    }
+  } catch(e) {
+    msg.className='status-msg err'; msg.textContent = '✓ Guardada e impresa (' + cotId + '), pero no se pudo enviar el mail (error de conexión).';
+    cotSuccessBanner_ = 'Guardada e impresa (' + cotId + '), pero no se pudo enviar el mail (error de conexión).';
+  }
+}
+async function confirmarDestinatarioMail() {
+  const chks = Array.from(document.querySelectorAll('.destChk:checked'));
+  document.getElementById('modalDestinatarioMail').classList.add('hidden');
+  if (!pendienteMailCot_) return;
+  if (!chks.length) { pendienteMailCot_.msg.textContent = '✓ Guardada e impresa (no se eligió destinatario, no se envió mail)'; pendienteMailCot_ = null; return; }
+  const emails = chks.map(c => c.value);
+  const p = pendienteMailCot_; pendienteMailCot_ = null;
+  await enviarMailCot_(p.id, p.razonSocial, p.htmlPdf, emails, p.msg);
+}
+
 async function guardarImprimirEnviar() {
   const estadoDestino = ESTADOS_TERMINALES.includes(cot.estado) ? cot.estado : 'Enviada';
   const res = await guardarCotInterno_(estadoDestino);
@@ -1585,31 +1631,31 @@ async function guardarImprimirEnviar() {
   imprimirConNombre_(nombreArchivoCot_(cliente.razonSocial, cot.id));
 
   const cotIdTerminada = cot.id; // se guarda antes de limpiar el formulario
-  const email = (cliente.email || '').trim();
+  const htmlPdf = '<html><head><meta charset="utf-8"><style>' + PDF_STYLE_CSS + '</style></head><body>' +
+    document.getElementById('printArea').innerHTML + '</body></html>';
 
-  if (!email) {
-    msg.textContent = '✓ Guardada e impresa como ' + cotIdTerminada + ' (el cliente no tiene email cargado, no se envió mail)';
-    cotSuccessBanner_ = 'Guardada e impresa como ' + cotIdTerminada + ' (sin mail: el cliente no tiene email cargado).';
+  // ★ 2026-08-25: si hay más de un email posible (cliente + estudio), se
+  // pregunta a cuál mandar en vez de mandarle a los dos automáticamente.
+  const opciones = [];
+  const emailCli = (cliente.email || '').trim();
+  if (emailCli) opciones.push({ label: (cliente.razonSocial || 'Cliente') + ' — ' + emailCli, email: emailCli });
+  const estudioSel = ESTUDIOS.find(e => e.id === cot.estudioId);
+  const emailEst = estudioSel ? (estudioSel.email || '').trim() : '';
+  if (emailEst && emailEst.toLowerCase() !== emailCli.toLowerCase()) opciones.push({ label: (estudioSel.nombre || 'Estudio') + ' — ' + emailEst, email: emailEst });
+
+  if (!opciones.length) {
+    msg.textContent = '✓ Guardada e impresa como ' + cotIdTerminada + ' (no hay ningún email cargado, no se envió mail)';
+    cotSuccessBanner_ = 'Guardada e impresa como ' + cotIdTerminada + ' (sin mail: no hay email cargado).';
+  } else if (opciones.length === 1) {
+    await enviarMailCot_(cotIdTerminada, cliente.razonSocial, htmlPdf, [opciones[0].email], msg);
   } else {
-    msg.textContent = '✓ Guardada e impresa como ' + cotIdTerminada + ' · enviando por mail a ' + email + '…';
-    try {
-      const htmlPdf = '<html><head><meta charset="utf-8"><style>' + PDF_STYLE_CSS + '</style></head><body>' +
-        document.getElementById('printArea').innerHTML + '</body></html>';
-      const r2 = await API.post({
-        action:'cotEnviarCliente', token: currentUser.token,
-        id: cotIdTerminada, emailCliente: email, clienteNombre: cliente.razonSocial, htmlPdf
-      });
-      if (r2.ok) {
-        msg.textContent = '✓ Guardada, impresa y enviada por mail a ' + email + ' (' + cotIdTerminada + ')';
-        cotSuccessBanner_ = 'Guardada, impresa y enviada por mail a ' + email + ' (' + cotIdTerminada + ').';
-      } else {
-        msg.className='status-msg err'; msg.textContent = '✓ Guardada e impresa (' + cotIdTerminada + '), pero el mail al cliente falló: ' + r2.error;
-        cotSuccessBanner_ = 'Guardada e impresa (' + cotIdTerminada + '), pero el mail al cliente falló: ' + r2.error;
-      }
-    } catch(e) {
-      msg.className='status-msg err'; msg.textContent = '✓ Guardada e impresa (' + cotIdTerminada + '), pero no se pudo enviar el mail (error de conexión).';
-      cotSuccessBanner_ = 'Guardada e impresa (' + cotIdTerminada + '), pero no se pudo enviar el mail (error de conexión).';
-    }
+    pendienteMailCot_ = { id: cotIdTerminada, razonSocial: cliente.razonSocial, htmlPdf, msg };
+    document.getElementById('destOpciones').innerHTML = opciones.map((o, i) => `
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;">
+        <input type="checkbox" class="destChk" value="${escHtml_(o.email)}" ${i===0?'checked':''} style="width:auto;">
+        ${escHtml_(o.label)}
+      </label>`).join('');
+    document.getElementById('modalDestinatarioMail').classList.remove('hidden');
   }
 
   // Cotización guardada/impresa/enviada: limpiamos el formulario y vamos al
@@ -1918,6 +1964,14 @@ async function eliminarCot(id) {
 function clienteCambiadoCot() {
   guardarBorradorLocal();
   mostrarCuitSeleccionado();
+  // ★ Si el cliente elegido ya tiene un estudio asociado en su ficha, lo
+  // autocompleta acá — sigue editable por si esta cotización puntual es
+  // distinta.
+  const c = CLIENTES.find(x=>x.id===document.getElementById('selCliente').value);
+  if (c && c.estudioId) {
+    document.getElementById('selEstudio').value = c.estudioId;
+    estudioCambiado();
+  }
 }
 function mostrarCuitSeleccionado() {
   const el = document.getElementById('cuitSeleccionado');
@@ -1993,7 +2047,7 @@ let cliEditId = null;
 function abrirNuevoCliente() { showTab('clientes'); limpiarCliForm(); document.getElementById('cCuit').focus(); }
 function limpiarCliForm() {
   cliEditId = null;
-  ['cCuit','cRazon','cContacto','cEmail','cTel','cDir','cLoc','cProv','cCondIva'].forEach(id=>document.getElementById(id).value='');
+  ['cCuit','cRazon','cContacto','cEmail','cTel','cDir','cLoc','cProv','cCondIva','cDni','cCargoContacto','cEstudioId'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cliFormTitle').textContent = 'Nuevo cliente';
   document.getElementById('cliMsg').textContent = '';
 }
@@ -2009,6 +2063,9 @@ function editarCliente(id) {
   document.getElementById('cLoc').value = c.localidad;
   document.getElementById('cProv').value = c.provincia || '';
   document.getElementById('cCondIva').value = c.condIva || '';
+  document.getElementById('cDni').value = c.dni || '';
+  document.getElementById('cCargoContacto').value = c.cargoContacto || '';
+  document.getElementById('cEstudioId').value = c.estudioId || '';
   document.getElementById('cliFormTitle').textContent = 'Editando cliente';
   showTab('clientes');
 }
@@ -2079,6 +2136,13 @@ function renderEstudios() {
   sel.innerHTML = '<option value="">— Sin estudio —</option>' +
     ESTUDIOS.filter(e=>e.activo!==false).map(e=>`<option value="${e.id}">${escHtml_(e.nombre)} (${e.comisionPctDefault}%)</option>`).join('');
   sel.value = val || cot.estudioId || '';
+  const selCli = document.getElementById('cEstudioId');
+  if (selCli) {
+    const valCli = selCli.value;
+    selCli.innerHTML = '<option value="">— Ninguno —</option>' +
+      ESTUDIOS.filter(e=>e.activo!==false).map(e=>`<option value="${e.id}">${escHtml_(e.nombre)}</option>`).join('');
+    selCli.value = valCli;
+  }
   document.getElementById('estList').innerHTML = ESTUDIOS.map(e=>`
     <div class="cot-row">
       <div style="flex:1;"><b>${escHtml_(e.nombre)}</b><div class="c-sub">comisión default ${e.comisionPctDefault}% ${e.contacto?'· '+escHtml_(e.contacto):''} ${e.telefono?'· '+escHtml_(e.telefono):''} ${e.activo===false?'· <span style="color:#b33;">inactivo</span>':''}</div></div>
