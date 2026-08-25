@@ -1542,7 +1542,8 @@ async function guardarImprimirEnviar() {
 
   buildPrint({ id:cot.id, items:itemsView(), inst:instSnapshot(), descPct:cot.descPct, notas:cot.notas, vendedor:cot.vendedor,
     condPago:cot.condPago, validez:cot.validez, lugarEnt:cot.lugarEnt,
-    plazoEnt:cot.plazoEnt, transEnt:cot.transEnt, ivaPct:cot.ivaPct, tc:cot.tc }, cliente);
+    plazoEnt:cot.plazoEnt, transEnt:cot.transEnt, ivaPct:cot.ivaPct, tc:cot.tc,
+    estudioArq:cot.estudioArq, nombreObra:cot.nombreObra }, cliente);
   imprimirConNombre_(nombreArchivoCot_(cliente.razonSocial, cot.id));
 
   const cotIdTerminada = cot.id; // se guarda antes de limpiar el formulario
@@ -2406,6 +2407,8 @@ function buildPrint(c, clienteObj) {
         ${field('Lugar de entrega', lugarEnt)}
         ${field('Plazo de entrega', plazoEnt)}
         ${field('Transporte', transEnt)}
+        ${c.estudioArq ? field('Estudio de Arquitectura', c.estudioArq) : ''}
+        ${c.nombreObra ? field('Obra', c.nombreObra) : ''}
       </div>
     </div>
 
