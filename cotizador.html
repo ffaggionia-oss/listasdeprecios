@@ -1609,6 +1609,18 @@ async function guardarCotInterno_(estadoForzado) {
   const msg = document.getElementById('cotMsg');
   msg.className = 'status-msg';
   if (cot.items.length===0) { msg.className='status-msg err'; msg.textContent='Agregá al menos un producto.'; return null; }
+
+  // ★ 2026-09-01: Franco pidió que la IA dependa menos de que él se
+  // acuerde de generarla — si llega a guardar con el recuadro de
+  // Aclaraciones vacío, se genera sola acá antes de seguir. Sigue siendo
+  // editable después (no se manda nada todavía en este paso), pero ya no
+  // hace falta acordarse de tocar el botón ✨.
+  const inNotasEl = document.getElementById('inNotas');
+  if (inNotasEl && !inNotasEl.value.trim()) {
+    msg.textContent = 'Generando el memo de alcance con IA antes de guardar…';
+    await generarMemoIA();
+  }
+
   const sel = document.getElementById('selCliente');
   const cliente = CLIENTES.find(c=>c.id===sel.value);
   const estudioSel = ESTUDIOS.find(e=>e.id===document.getElementById('selEstudio').value);
