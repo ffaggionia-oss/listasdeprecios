@@ -413,6 +413,10 @@
             <div class="tot-line"><span>Comisión vendedor (<span id="iComVendPct">0</span>%)</span><span id="iComVend">—</span></div>
             <div class="tot-line"><span>Neto Kokkai</span><span id="iNeto">—</span></div>
           </div>
+          <div class="interno hidden" id="boxRentReal" style="border-color:#B9943E;">
+            <div class="interno-title">💰 Rentabilidad real — igual al informe que recibe Nico (solo Gerencia)</div>
+            <div id="rentRealBody"></div>
+          </div>
         </div>
         <div class="totals-box">
           <div id="pmodWarn" class="pmod-warn hidden"></div>
@@ -1337,6 +1341,49 @@ function totales() {
   return { sub, pct, desc, total, arq, arqPct, com, comVendPct, comVend, neto: total-com-comVend };
 }
 
+// ★ Agregado 2026-09-01: rentabilidad REAL en vivo, mismo criterio que
+// rentabilidadPedido_ del backend (el que arma el informe que le mandamos a
+// Nico) — costo de madera (costoUn por ítem) + costo de instalación
+// (mano de obra + fiscal + materiales + periféricos, vía instCalc()) +
+// comisiones. Solo Gerencia la ve — ventas sigue viendo nada más que
+// comisiones/neto en boxInterno, como siempre.
+function renderRentabilidadReal(t) {
+  const box = document.getElementById('boxRentReal');
+  if (!box) return;
+  const esGerencia = currentUser && currentUser.rol === 'gerencia';
+  box.classList.toggle('hidden', !esGerencia);
+  if (!esGerencia) return;
+
+  let costoMadera = 0, itemsSinCosto = 0, nombresSinCosto = [];
+  itemsView().filter(it => !it._pseudo && it.cat !== 'Instalación').forEach(it => {
+    const cu = parseFloat(it.costoUn);
+    if (isNaN(cu)) { itemsSinCosto++; nombresSinCosto.push(it.desc); return; }
+    costoMadera += cu * (parseFloat(it.cant) || 0);
+  });
+
+  const c = instCalc();
+  const costoInstalacion = (cot.inst && cot.inst.on && MAESTRO) ? c.costoTotal : 0;
+
+  const costoTotal = costoMadera + costoInstalacion + t.com + t.comVend;
+  const margenBruto = t.total - costoTotal;
+  const margenPct = t.total > 0 ? (margenBruto / t.total * 100) : 0;
+
+  const lineaCosto = (label, monto) => monto ? `<div class="tot-line"><span>${label}</span><span style="color:#b3261e;">− USD ${fmt(Math.abs(monto))}</span></div>` : '';
+  const avisoMadera = itemsSinCosto > 0
+    ? `<div style="margin:6px 0;padding:6px 8px;background:#fff3cd;border-radius:6px;font-size:11px;color:#7a5c00;">⚠ ${itemsSinCosto} ítem(s) sin costo de madera cargado (${escHtml_(nombresSinCosto.slice(0,3).join(', '))}${nombresSinCosto.length>3?'…':''}) — el margen real es MENOR al de acá abajo.</div>`
+    : '';
+
+  document.getElementById('rentRealBody').innerHTML =
+    `<div class="tot-line"><span>Ingreso total (post-descuento)</span><span>USD ${fmt(t.total)}</span></div>` +
+    lineaCosto('Costo de madera' + (itemsSinCosto ? ' (parcial)' : ''), costoMadera) +
+    lineaCosto('Costo instalación (MO + fiscal + materiales + periféricos)', costoInstalacion) +
+    lineaCosto('Comisión arquitecto/estudio', t.com) +
+    lineaCosto('Comisión vendedor', t.comVend) +
+    avisoMadera +
+    `<div class="tot-line big" style="border-top:1px dashed #ccc;margin-top:6px;padding-top:6px;"><span>MARGEN BRUTO</span><span style="color:${margenBruto>=0?'#1a7f37':'#b3261e'};">USD ${fmt(margenBruto)} (${margenPct.toFixed(1)}%)</span></div>` +
+    `<div style="font-size:10px;color:#999;margin-top:4px;">No incluye IVA/Ganancias ni estructura de la empresa — mismo criterio que el informe que recibe Nico.</div>`;
+}
+
 // ---------- Documentos de la cotización ----------
 function renderDocsCard() {
   const sinGuardar = !cot.id;
@@ -1462,6 +1509,7 @@ function renderCart(full) {
   document.getElementById('iComVendPct').textContent = t.comVendPct;
   document.getElementById('iComVend').textContent = t.comVend>0 ? '— USD ' + fmt(t.comVend) : '—';
   document.getElementById('iNeto').textContent = 'USD ' + fmt(t.neto);
+  renderRentabilidadReal(t);
   guardarBorradorLocal();
 }
 
