@@ -1294,6 +1294,24 @@ function setCant(k, v) {
 }
 function quitarItem(k) { cot.items.splice(k,1); renderCart(); }
 
+// ★ 2026-09-11: agregar el MISMO producto como línea nueva separada (antes
+// clickear el mismo producto en la lista solo sumaba cantidad a la línea
+// existente — no había forma de tener "10m² Ignite 7 para la cocina" y
+// "10m² Ignite 7 para el baño" como dos líneas distintas). Arranca sin
+// comentario a propósito — guardarCotInterno_ exige uno si hay 2+ líneas
+// del mismo producto, para que quede clara la razón de la separación.
+function duplicarItem(k) {
+  const copia = Object.assign({}, cot.items[k], { comentario: '' });
+  cot.items.push(copia);
+  renderCart();
+}
+function setDespItem(k, v) {
+  const it = cot.items[k];
+  it.desp = Math.min(Math.max(parseFloat(v)||0, 0), 100);
+  recalcCantFact(it);
+  renderCart();
+}
+
 function capDesc() {
   const el = document.getElementById('inDesc');
   let v = parseFloat(el.value)||0;
@@ -1461,7 +1479,11 @@ function renderCart(full) {
         ? `<div class="clip-toggle"><label style="display:inline;cursor:pointer;"><input type="checkbox" ${it.conClip?'checked':''} onchange="toggleClip(${k})" style="width:auto"> con clip</label></div>` : '';
       const mergedTag = it._instMerged ? '<div style="font-size:10px;color:#C9A227;font-weight:800">🔧 instalación integrada al precio</div>' : '';
       const cantReal = it.cantReal!==undefined ? it.cantReal : it.cant;
-      const despHtml = (it.desp>0) ? `<div style="font-size:10px;color:#999;">+${it.desp}% desperdicio → ${fmt(it.cant, decFor(it.u))} ${it.u} facturados</div>` : '';
+      // ★ 2026-09-11: desperdicio editable por ítem (antes solo había un %
+      // global que se aplicaba a todos los ítems por igual).
+      const despInputHtml = `<div style="font-size:10px;color:#999;margin-top:2px;">
+        <input type="number" min="0" max="100" step="0.5" value="${it.desp||0}" style="width:48px;font-size:10px;padding:1px 3px;" onchange="setDespItem(${k},this.value)">% desp. → ${fmt(it.cant, decFor(it.u))} ${it.u} facturados
+      </div>`;
       // ★ Precio editable + marca visible si difiere del precio de lista
       const pmod = precioModificado_(it);
       const lista = parseFloat(it.precioLista) || 0;
@@ -1475,10 +1497,13 @@ function renderCart(full) {
       return `<tr${it._instMerged?' style="background:#FBF3DC;"':''}>
         <td><b>${it.desc}</b><div style="font-size:11px;color:#888">${it.cat}</div>${clipHtml}${mergedTag}${comentarioHtml}</td>
         <td>${it.medidas}</td>
-        <td class="num"><input class="qty-input" type="number" min="0" step="any" value="${cantReal}" onchange="setCant(${k},this.value)"> <small>${it.u}</small>${despHtml}</td>
+        <td class="num"><input class="qty-input" type="number" min="0" step="any" value="${cantReal}" onchange="setCant(${k},this.value)"> <small>${it.u}</small>${despInputHtml}</td>
         <td class="num">${precioCell}</td>
         <td class="num"><b>USD ${fmt(it.precio*it.cant)}</b></td>
-        <td><span class="rm" onclick="quitarItem(${k})">✕</span></td>
+        <td>
+          <span class="rm" onclick="quitarItem(${k})" title="Quitar">✕</span>
+          <span class="rm" onclick="duplicarItem(${k})" title="Agregar este mismo producto como línea nueva (ej: mismo producto para dos ambientes distintos)" style="color:#999;">⧉</span>
+        </td>
       </tr>`;
     }).join('') || '<tr><td colspan="6" style="color:#aaa;padding:16px;">Todavía no agregaste productos.</td></tr>';
   } else {
@@ -1609,6 +1634,19 @@ async function guardarCotInterno_(estadoForzado) {
   const msg = document.getElementById('cotMsg');
   msg.className = 'status-msg';
   if (cot.items.length===0) { msg.className='status-msg err'; msg.textContent='Agregá al menos un producto.'; return null; }
+
+  // ★ 2026-09-11: si el mismo producto (idx) aparece en más de una línea,
+  // hace falta un comentario en CADA línea repetida que diga a qué se
+  // adjudica cada una (ej. "cocina" / "baño") — si no, en el PDF quedan
+  // dos líneas idénticas sin forma de distinguirlas.
+  const conteoIdx = {};
+  cot.items.forEach(it => { if (it.idx !== undefined) conteoIdx[it.idx] = (conteoIdx[it.idx]||0) + 1; });
+  const faltaLeyenda = cot.items.find(it => it.idx !== undefined && conteoIdx[it.idx] > 1 && !String(it.comentario||'').trim());
+  if (faltaLeyenda) {
+    msg.className = 'status-msg err';
+    msg.textContent = '"' + faltaLeyenda.desc + '" aparece en más de una línea — agregale un comentario a cada una explicando a qué se adjudica (ej: "cocina", "baño").';
+    return null;
+  }
 
   // ★ 2026-09-01: Franco pidió que la IA dependa menos de que él se
   // acuerde de generarla — si llega a guardar con el recuadro de
@@ -1761,7 +1799,8 @@ async function guardarImprimirEnviar() {
   buildPrint({ id:cot.id, items:itemsView(), inst:instSnapshot(), descPct:cot.descPct, notas:cot.notas, vendedor:cot.vendedor,
     condPago:cot.condPago, validez:cot.validez, lugarEnt:cot.lugarEnt,
     plazoEnt:cot.plazoEnt, transEnt:cot.transEnt, ivaPct:cot.ivaPct, tc:cot.tc,
-    estudioArq:cot.estudioArq, nombreObra:cot.nombreObra, direccionObra:cot.direccionObra }, cliente);
+    estudioArq:cot.estudioArq, nombreObra:cot.nombreObra, direccionObra:cot.direccionObra,
+    estudioObj: ESTUDIOS.find(e=>e.id===cot.estudioId) }, cliente);
   imprimirConNombre_(nombreArchivoCot_(cliente.razonSocial, cot.id));
 
   const cotIdTerminada = cot.id; // se guarda antes de limpiar el formulario
@@ -2607,7 +2646,11 @@ function buildPrint(c, clienteObj) {
   const conIva = neto + iva;             // informativo, más chico
   const pesos = tc>0 ? neto*tc : 0;
 
-  const field = (lab,val,full) => `<div class="pr-field${full?' full':''}"><div class="pr-lab">${lab}</div><div class="pr-val">${val||''}</div></div>`;
+  // ★ 2026-09-11: campos vacíos ya NO se imprimen (antes mostraban la
+  // etiqueta con el valor en blanco, ej. "Domicilio:" sin nada — es lo que
+  // hacía ver el encabezado "vacío" cuando no había cliente formal cargado).
+  const field = (lab,val,full) => val ? `<div class="pr-field${full?' full':''}"><div class="pr-lab">${lab}</div><div class="pr-val">${val}</div></div>` : '';
+  const est = c.estudioObj || {};
 
   document.getElementById('printArea').innerHTML = `
   <div class="pr-doc">
@@ -2623,6 +2666,15 @@ function buildPrint(c, clienteObj) {
     <div class="pr-rule"></div>
 
     <div class="pr-sec">
+      <div class="pr-sec-t">Obra / Referencia</div>
+      <div class="pr-grid3">
+        ${field('Nombre de la obra', c.nombreObra, true)}
+        ${field('Dirección de la obra', c.direccionObra, true)}
+      </div>
+    </div>
+
+    ${(cli.razonSocial || cli.direccion || cli.telefono || cli.email || cli.contacto) ? `
+    <div class="pr-sec">
       <div class="pr-sec-t">Cliente</div>
       <div class="pr-grid">
         ${field('Señor/es', cli.razonSocial)}
@@ -2632,10 +2684,21 @@ function buildPrint(c, clienteObj) {
         ${field('Provincia', cli.provincia)}
         ${field('Correo electrónico', cli.email)}
         ${field('Teléfono', cli.telefono)}
-        ${field('Contacto', cli.contacto + (cli.cargoContacto ? ' (' + cli.cargoContacto + ')' : ''))}
+        ${field('Contacto', (cli.contacto || '') + (cli.contacto && cli.cargoContacto ? ' (' + cli.cargoContacto + ')' : ''))}
         ${field('Condición IVA', cli.condIva)}
       </div>
-    </div>
+    </div>` : ''}
+
+    ${(est.nombre || c.estudioArq) ? `
+    <div class="pr-sec">
+      <div class="pr-sec-t">Estudio de Arquitectura</div>
+      <div class="pr-grid">
+        ${field('Estudio', est.nombre || c.estudioArq)}
+        ${field('Contacto', est.contacto)}
+        ${field('Teléfono', est.telefono)}
+        ${field('Email', est.email)}
+      </div>
+    </div>` : ''}
 
     <div class="pr-sec">
       <div class="pr-sec-t">Condiciones</div>
@@ -2646,9 +2709,6 @@ function buildPrint(c, clienteObj) {
         ${field('Lugar de entrega', lugarEnt)}
         ${field('Plazo de entrega', plazoEnt)}
         ${field('Transporte', transEnt)}
-        ${c.estudioArq ? field('Estudio de Arquitectura', c.estudioArq) : ''}
-        ${c.nombreObra ? field('Obra', c.nombreObra) : ''}
-        ${c.direccionObra ? field('Dirección de la obra', c.direccionObra, true) : ''}
       </div>
     </div>
 
@@ -2720,6 +2780,7 @@ async function pdfDesdeLista(id) {
   const r = await API.get({ action:'cotGet', id, token: currentUser.token });
   if (!r.ok) return alert('No se pudo cargar');
   const cli = CLIENTES.find(c=>c.id===r.cot.clienteId);
+  r.cot.estudioObj = ESTUDIOS.find(e=>e.id===r.cot.estudioId);
   buildPrint(r.cot, cli || { razonSocial: r.cot.clienteNombre });
   imprimirConNombre_(nombreArchivoCot_((cli && cli.razonSocial) || r.cot.clienteNombre, r.cot.id));
 }
