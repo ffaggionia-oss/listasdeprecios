@@ -1231,8 +1231,39 @@ function setDespMadera(v) {
   renderCart();
 }
 
+// ★ 2026-09-19: productos "por m²" (ej. tornillos de fijación, alfajías) —
+// el vendedor no elige la cantidad real directamente, ingresa los M² a
+// cubrir y la cantidad facturable sale de m² × consumoPorM2 (tasa que
+// define Gerencia en el producto). Se agrega SIEMPRE con una leyenda en
+// "comentario" (que ya se imprime en el carrito y en el PDF) explicando
+// cuánto le llega al cliente — no es opcional, es la forma en que se
+// evita el reclamo de "no entendí cuántos tornillos me estás cobrando".
+function agregarItemPorM2_(p) {
+  const m2Str = prompt('¿Cuántos m² vas a cubrir con "' + p.madera + ' ' + p.perfil + '"?');
+  if (m2Str === null) return null;
+  const m2 = parseFloat(String(m2Str).replace(',', '.'));
+  if (!m2 || m2 <= 0) { alert('Ingresá un número de m² válido.'); return null; }
+  const cantidad = m2 * p.consumoPorM2;
+  return {
+    desc: `${p.madera} ${p.perfil}`, cat: p.cat, medidas: p.medidas, largos: p.largos,
+    u: p.consumoUnidad || p.u, precio: p.a, precioLista: p.a,
+    cantReal: cantidad, desp: 0, cant: cantidad, conClip: false,
+    comentario: `Cotizado para ${fmt(m2,2)} m² a razón de ${p.consumoPorM2} ${p.consumoUnidad}/m² → ${fmt(cantidad,2)} ${p.consumoUnidad}.`,
+    costoUn: p.costoNacMt2Usd,
+    _porM2: true, _m2Origen: m2, _consumoPorM2: p.consumoPorM2
+  };
+}
+
 function agregarItem(i) {
   const p = D[i];
+  if (p.consumoPorM2) {
+    const it = agregarItemPorM2_(p);
+    if (!it) return;
+    it.idx = i;
+    cot.items.push(it);
+    renderCart();
+    return;
+  }
   const despPct = cot.despMaderaPct || 0;
   const ex = cot.items.find(it => it.idx===i && !it.conClip);
   if (ex && p.con_clip_a===undefined) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); renderCart(); return; }
