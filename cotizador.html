@@ -1398,7 +1398,16 @@ function agregarItem(i) {
   }
   const despPct = cot.despMaderaPct || 0;
   const ex = cot.items.find(it => it.idx===i && !it.conClip);
-  if (ex && p.con_clip_a===undefined) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); renderCart(); return; }
+  // ★ 2026-09-22: si el producto YA está en el carrito, antes se sumaba 1 a
+  // esa línea en silencio — no había forma de volver a elegirlo desde la
+  // lista para crear una línea NUEVA separada (ej. "Ignite 5" para cocina Y
+  // para comedor, cada uno con su propia leyenda/instalación). Ahora se
+  // pregunta la intención. El botón ⧉ en el carrito sigue siendo el otro
+  // camino para duplicar una línea ya cargada.
+  if (ex && p.con_clip_a===undefined) {
+    const nuevaLinea = confirm('"' + p.madera + ' ' + p.perfil + '" ya está en el carrito.\n\nAceptar = agregarlo como LÍNEA NUEVA separada (ej. para otro ambiente, con su propia leyenda/instalación).\nCancelar = sumar 1 a la línea que ya existe.');
+    if (!nuevaLinea) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); renderCart(); return; }
+  }
   const it = {
     _itemId: nextItemId_(),
     idx:i, desc:`${p.madera} ${p.perfil}`, cat:p.cat, medidas:p.medidas, largos:p.largos,
