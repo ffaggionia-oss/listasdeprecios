@@ -57,6 +57,11 @@
   .inst-resumen { margin-top:14px; }
   .inst-resumen .tot-line { font-size:12.5px; }
   .inst-warn { font-size:11.5px; color:#a06a00; background:#FDF6E3; border:1px solid #EFE1B8; border-radius:6px; padding:6px 8px; margin-top:8px; }
+  .inst-tab { display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px; background:#f4efe4; color:#555; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .inst-tab.active { background:#C9A227; color:#fff; }
+  .inst-tab-x { opacity:.7; }
+  .inst-tab-x:hover { opacity:1; }
+  .inst-tab-add { background:transparent; border:1px dashed #ccc; color:#999; }
 
   /* Buscador de productos */
   .prod-search { width:100%; margin-bottom:8px; }
@@ -322,6 +327,17 @@
         <span style="font-size:12px;color:#999;margin-left:8px;">Si no la activás, se cotiza solo producto.</span>
       </div>
       <div id="instBody" class="hidden">
+        <div id="instGrupoTabs" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+        <div class="inst-grid">
+          <div>
+            <label>Nombre del grupo <span style="font-size:11px;color:#999;font-weight:400">(para diferenciarlo en Portal de Obras y en el PDF)</span></label>
+            <input type="text" id="instNombreGrupo" style="width:100%" onchange="instRenombrarActivo(this.value)">
+          </div>
+        </div>
+        <div id="instAsignWrap" class="hidden" style="margin-bottom:12px;">
+          <div class="inst-sec-t">Productos incluidos en este grupo</div>
+          <div id="instAsign" style="max-height:160px;overflow:auto;border:1px solid #eee;border-radius:8px;padding:6px 10px;"></div>
+        </div>
         <div class="inst-grid">
           <div>
             <label>M² a instalar</label>
@@ -339,7 +355,7 @@
           </div>
           <div id="instTargetWrap" class="hidden">
             <label>Producto que absorbe la instalación</label>
-            <select id="instTarget" style="width:100%" onchange="instSet('targetK',parseInt(this.value))"></select>
+            <select id="instTarget" style="width:100%" onchange="instSet('targetId',this.value)"></select>
           </div>
         </div>
 
@@ -375,7 +391,7 @@
         <div id="instWarn"></div>
 
         <div style="margin-top:12px;">
-          <button class="btn btn-danger" onclick="instToggle(false)">✕ Quitar instalación</button>
+          <button class="btn btn-danger" onclick="instQuitarGrupoActivo()">✕ Quitar este grupo</button>
         </div>
       </div>
     </div>
@@ -620,11 +636,26 @@ let D = [];  // se carga en vivo desde el Sheet de precios (getProductos)
 let MAESTRO = null; // {tipos, materiales, perifericos, escaladores, reductores, segmentos?}
 let maestroErrorMsg = ''; // ★ vacío = sin Maestro por rol (ventas, esperado); con texto = falló la carga (mostrar aviso, no ocultar mudo)
 
-function instDefault() {
-  return { on:false, m2:0, modo:'sep', targetK:0, tiposSel:{}, mats:{}, perif:{}, esc:{}, red:{},
+// ============================================
+// GRUPOS DE INSTALACIÓN (2026-09-22): antes había UN solo bloque de
+// instalación por cotización; ahora se pueden armar varios grupos (ej.
+// "Deck living", "Revestimiento fachada"), cada uno con su propio m², tipo
+// de colocación, materiales y margen, y asignarle qué productos del
+// carrito cubre. Con 1 solo grupo el comportamiento es IDÉNTICO al de
+// antes — el atajo itemIds:null significa "todo el carrito" y sólo es
+// válido mientras haya un único grupo.
+// ============================================
+let instGrupoSeq = 0;
+let instActivo = 0; // índice del grupo que se está editando/mostrando en el panel
+let itemIdSeq = 0;
+function nextItemId_() { return 'it' + (++itemIdSeq); }
+
+function instGrupoDefault(nombre) {
+  return { id:'g'+(++instGrupoSeq), nombre: nombre || 'Instalación', itemIds:null,
+    m2:0, modo:'sep', targetId:'', tiposSel:{}, mats:{}, perif:{}, esc:{}, red:{},
     fiscal:true, margen:0.40, segId:'', segIdx:-1 };
 }
-// Corrige objetos cot.inst viejos (guardados en el borrador local del navegador
+// Corrige objetos de grupo viejos (guardados en el borrador local del navegador
 // ANTES de que "tipo de colocación" pasara de radio único a checkbox múltiple).
 // Sin esto, un borrador viejo sin `tiposSel` rompe buildInstUI() a mitad de camino
 // (Object.keys(undefined) tira TypeError) y deja todo lo de abajo — materiales,
@@ -638,7 +669,59 @@ function instNormalize(I) {
   }
   return I;
 }
-function instEnsure() { if (!cot.inst) cot.inst = instDefault(); return instNormalize(cot.inst); }
+// Devuelve el grupo ACTIVO (el que se está viendo/editando en el panel),
+// creando el array y el primer grupo si todavía no existe ninguno.
+function instEnsure() {
+  if (!cot.instGrupos) cot.instGrupos = [];
+  if (!cot.instGrupos.length) cot.instGrupos.push(instGrupoDefault());
+  if (instActivo >= cot.instGrupos.length || instActivo < 0) instActivo = 0;
+  return instNormalize(cot.instGrupos[instActivo]);
+}
+// Ids de cart items que le corresponden a un grupo — el atajo itemIds:null
+// sólo es válido cuando hay un único grupo (todo el carrito es "el" grupo).
+function instItemIdsDe_(I) {
+  if (I.itemIds === null || I.itemIds === undefined) {
+    return cot.instGrupos.length <= 1 ? cot.items.map(it=>it._itemId) : [];
+  }
+  return I.itemIds;
+}
+// Al agregar un segundo grupo, el primero deja de tener el atajo "todos" y
+// pasa a tener asignados explícitamente los productos que tenía hasta ahora.
+function instCongelarAsignaciones_() {
+  cot.instGrupos.forEach(g => { if (g.itemIds === null || g.itemIds === undefined) g.itemIds = instItemIdsDe_(g); });
+}
+function instAgregarGrupo() {
+  instCongelarAsignaciones_();
+  const nombre = prompt('Nombre del grupo de instalación (ej. "Deck living", "Revestimiento fachada"):', 'Instalación ' + (cot.instGrupos.length + 1));
+  if (nombre === null) return;
+  cot.instGrupos.push(instGrupoDefault(nombre.trim() || ('Instalación ' + (cot.instGrupos.length + 1))));
+  instActivo = cot.instGrupos.length - 1;
+  buildInstUI();
+  renderCart();
+}
+function instQuitarGrupoActivo() {
+  if (!cot.instGrupos.length) return;
+  if (!confirm('¿Quitar el grupo "' + (cot.instGrupos[instActivo].nombre||'') + '"? Los productos que tenía asignados quedan sin instalación.')) return;
+  cot.instGrupos.splice(instActivo, 1);
+  instActivo = 0;
+  buildInstUI();
+  renderCart();
+}
+function instActivarGrupo(i) { instActivo = i; buildInstUI(); }
+function instQuitarGrupoPorId_(id) {
+  const i = (cot.instGrupos||[]).findIndex(g=>g.id===id);
+  if (i<0) return;
+  instActivo = i;
+  instQuitarGrupoActivo();
+}
+function instRenombrarActivo(v) { instEnsure().nombre = v || 'Instalación'; buildInstUI(); renderCart(); }
+function instToggleItemEnGrupo(itemId, checked) {
+  instCongelarAsignaciones_();
+  cot.instGrupos.forEach(g => { g.itemIds = (g.itemIds||[]).filter(id=>id!==itemId); });
+  if (checked) instEnsure().itemIds.push(itemId);
+  buildInstUI();
+  renderCart();
+}
 
 // --- reglas automáticas por m² leídas del texto de la condición del Maestro ---
 // escaladores "Obra < 20 mt²" / "Obra < 40 mt²" → tramos; reductores "Obra 200–300 mt²" → rangos
@@ -671,8 +754,8 @@ function instAutoFlags() {
   document.querySelectorAll('#instRed input[data-id]').forEach(ch => { ch.checked = !!I.red[ch.dataset.id]; });
 }
 
-function instCalc() {
-  const I = instEnsure();
+function instCalc() { return instCalcG(instEnsure()); }
+function instCalcG(I) {
   const m2 = parseFloat(I.m2)||0;
   if (!MAESTRO) return { m2, matsM2:0, perifTotal:0, perifM2:0, moM2:0, amp:0, red:0, moTotal:0, fiscalTotal:0, fiscalM2:0, costoM2:0, costoTotal:0, mg:0, precioM2:0, precioTotal:0, rent:0 };
 
@@ -705,52 +788,53 @@ function instCalc() {
            rent: precioTotal - costoTotal };
 }
 
-// Ítems "materializados": productos + instalación (separada o integrada)
+// Ítems "materializados": productos + instalación de TODOS los grupos
+// (cada grupo separado, o integrado al producto que le corresponda)
 function itemsView() {
   const base = cot.items.map((it,k)=>Object.assign({_k:k}, it));
-  const I = cot.inst;
-  if (!I || !I.on || !MAESTRO) return base;
-  const c = instCalc();
-  if (c.m2<=0 || c.precioTotal<=0) return base;
-  if (I.modo==='int') {
-    const t = base[I.targetK];
-    if (t && t.cant>0) {
-      const instAdd = c.precioTotal/t.cant;
-      if (t.precioLista !== undefined && t.precioLista !== null) t.precioLista = parseFloat(t.precioLista) + instAdd;
-      t.precio = t.precio + instAdd;
-      t.desc = t.desc + ' — instalación incluida';
-      t._instMerged = true;
-      return base;
+  if (!MAESTRO) return base;
+  (cot.instGrupos||[]).forEach(I => {
+    const c = instCalcG(I);
+    if (c.m2<=0 || c.precioTotal<=0) return;
+    if (I.modo==='int') {
+      const t = base.find(x=>x._itemId===I.targetId && !x._instMerged);
+      if (t && t.cant>0) {
+        const instAdd = c.precioTotal/t.cant;
+        if (t.precioLista !== undefined && t.precioLista !== null) t.precioLista = parseFloat(t.precioLista) + instAdd;
+        t.precio = t.precio + instAdd;
+        t.desc = t.desc + ' — instalación incluida';
+        t._instMerged = true;
+        return;
+      }
     }
-  }
-  base.push({ _pseudo:true, idx:-1, desc:'Servicio de instalación y colocación', cat:'Instalación',
-    medidas:'—', u:'m²', precio:c.precioM2, cant:c.m2, conClip:false });
+    base.push({ _pseudo:true, _grupoId:I.id, idx:-1, desc:'Servicio de instalación — ' + (I.nombre||'instalación'), cat:'Instalación',
+      medidas:'—', u:'m²', precio:c.precioM2, cant:c.m2, conClip:false });
+  });
   return base;
 }
 
-// Snapshot con NOMBRES para el PDF (sin costos internos)
-function instSnapshot() {
-  const I = instNormalize(cot.inst);
-  if (!I || !I.on || !MAESTRO) return null;
-  const c = instCalc();
+// Snapshot con NOMBRES para el PDF (sin costos internos) — de UN grupo
+function instSnapshotG(I) {
+  if (!I || !MAESTRO) return null;
+  const c = instCalcG(I);
   const tiposSeleccionados = (MAESTRO.tipos||[]).filter(t=>I.tiposSel[t.id]);
   const mats = (MAESTRO.materiales||[]).filter(m=>I.mats[m.id]).map(m=>m.insumo);
   const perif = (MAESTRO.perifericos||[]).map(p=>{
     const cant = parseFloat(I.perif[p.id])||0;
     return cant>0 ? p.insumo + ' (' + cant + (p.unidad ? ' ' + String(p.unidad).toLowerCase() : '') + ')' : null;
   }).filter(Boolean);
-  return { on:true, m2:c.m2, modo:I.modo, tipos: tiposSeleccionados.map(t=>t.tipo), mats, perif, fiscal:!!I.fiscal,
+  return { on:true, nombre:I.nombre||'', m2:c.m2, modo:I.modo, tipos: tiposSeleccionados.map(t=>t.tipo), mats, perif, fiscal:!!I.fiscal,
     equipo:'colocadores', precioM2:c.precioM2, precioTotal:c.precioTotal };
 }
 
-// Config por IDs del Maestro — es lo que se guarda y lo que precarga la obra al aprobar
-function instCfg() {
-  const I = instNormalize(cot.inst);
-  if (!I || !I.on || !MAESTRO) return null;
-  const c = instCalc(); // costo planificado CONGELADO al momento de cotizar — viaja a la obra
+// Config por IDs del Maestro — de UN grupo — es lo que se guarda y lo que precarga la obra al aprobar
+function instCfgG(I) {
+  if (!I || !MAESTRO) return null;
+  const c = instCalcG(I); // costo planificado CONGELADO al momento de cotizar — viaja a la obra
   const tiposSeleccionados = (MAESTRO.tipos||[]).filter(t=>I.tiposSel[t.id]);
   return {
-    mt2: parseFloat(I.m2)||0, modo: I.modo,
+    nombre: I.nombre||'', itemIds: instItemIdsDe_(I),
+    mt2: parseFloat(I.m2)||0, modo: I.modo, targetId: I.targetId||'',
     tipoColocacionIds: tiposSeleccionados.map(t=>t.id),
     tipoColocacionId: tiposSeleccionados[0] ? tiposSeleccionados[0].id : '', // compat: primer tipo elegido
     materiales: (MAESTRO.materiales||[]).filter(m=>I.mats[m.id]).map(m=>({ id:m.id, incluye:true })),
@@ -763,13 +847,21 @@ function instCfg() {
       gananciaNominal:c.rent, margen:c.mg }
   };
 }
-// Reconstruye el estado desde una config guardada (por IDs)
-function instDesdeCfg(cfg) {
-  const I = instDefault();
-  if (!cfg) return I;
-  I.on = true;
+// Arma el payload {grupos:[...]} a guardar en cotSave. Sin Maestro (rol
+// ventas) no se puede recalcular — mismo comportamiento que antes (no se
+// toca/guarda la instalación existente desde ese rol).
+function instGruposPayload_() {
+  if (!MAESTRO) return [];
+  instCongelarAsignaciones_();
+  return (cot.instGrupos||[]).map(I => ({ snapshot: instSnapshotG(I), cfg: instCfgG(I) }));
+}
+// Reconstruye UN grupo desde una config guardada (por IDs)
+function instGrupoDesdeCfg_(cfg) {
+  const I = instGrupoDefault(cfg.nombre);
+  I.itemIds = cfg.itemIds !== undefined ? cfg.itemIds : null;
   I.m2 = cfg.mt2 || 0;
   I.modo = cfg.modo || 'sep';
+  I.targetId = cfg.targetId || '';
   // Compat: cotizaciones viejas guardaban un solo tipoColocacionId (string)
   const ids = Array.isArray(cfg.tipoColocacionIds) ? cfg.tipoColocacionIds
     : (cfg.tipoColocacionId ? [cfg.tipoColocacionId] : []);
@@ -787,10 +879,14 @@ function instDesdeCfg(cfg) {
 // ---------- UI ----------
 function instToggle(on) {
   if (on && !MAESTRO) { alert('El Maestro de Precios no está disponible para tu usuario.'); return; }
-  instEnsure().on = on;
-  document.getElementById('instOff').classList.toggle('hidden', on);
-  document.getElementById('instBody').classList.toggle('hidden', !on);
-  if (on && !parseFloat(cot.inst.m2)) instM2DesdeCarrito(true);
+  if (on) {
+    instEnsure();
+    if (!parseFloat(cot.instGrupos[instActivo].m2)) instM2DesdeCarrito(true);
+  } else {
+    cot.instGrupos = [];
+  }
+  document.getElementById('instOff').classList.toggle('hidden', cot.instGrupos.length>0);
+  document.getElementById('instBody').classList.toggle('hidden', cot.instGrupos.length===0);
   buildInstUI();
   renderCart();
 }
@@ -820,9 +916,12 @@ function instSetM2(v) {
 }
 function instM2DesdeCarrito(silencioso) {
   // Usa el m² REAL (sin desperdicio de madera) — la mano de obra se paga por
-  // la superficie real a instalar, no por el material extra comprado por recortes.
-  const m2 = cot.items.filter(it=>it.u==='m²').reduce((s,it)=>s+(parseFloat(it.cantReal!==undefined?it.cantReal:it.cant)||0),0);
-  if (!m2 && !silencioso) { alert('No hay productos en m² en el carrito.'); return; }
+  // la superficie real a instalar, no por el material extra comprado por
+  // recortes. Sólo cuenta los productos ASIGNADOS a este grupo.
+  const I = instEnsure();
+  const ids = instItemIdsDe_(I);
+  const m2 = cot.items.filter(it=>it.u==='m²' && ids.indexOf(it._itemId)!==-1).reduce((s,it)=>s+(parseFloat(it.cantReal!==undefined?it.cantReal:it.cant)||0),0);
+  if (!m2 && !silencioso) { alert('No hay productos en m² asignados a este grupo.'); return; }
   document.getElementById('instM2').value = m2||'';
   instSetM2(m2);
 }
@@ -831,12 +930,15 @@ function instTargetVis() {
   const w=document.getElementById('instTargetWrap');
   w.classList.toggle('hidden', I.modo!=='int');
   if (I.modo==='int') {
+    const ids = instItemIdsDe_(I);
+    const itemsGrupo = cot.items.filter(it=>ids.indexOf(it._itemId)!==-1);
+    if (!I.targetId || itemsGrupo.every(it=>it._itemId!==I.targetId)) I.targetId = itemsGrupo[0] ? itemsGrupo[0]._itemId : '';
     const sel=document.getElementById('instTarget');
-    sel.innerHTML = cot.items.map((it,k)=>{
+    sel.innerHTML = itemsGrupo.map((it)=>{
       const cReal = it.cantReal!==undefined ? it.cantReal : it.cant;
-      return `<option value="${k}" ${k===I.targetK?'selected':''}>${it.desc} (${cReal} ${it.u})</option>`;
+      return `<option value="${escHtml_(it._itemId)}" ${it._itemId===I.targetId?'selected':''}>${it.desc} (${cReal} ${it.u})</option>`;
     }).join('')
-      || '<option value="0">— agregá productos al carrito —</option>';
+      || '<option value="">— agregá productos a este grupo —</option>';
   }
 }
 
@@ -862,9 +964,38 @@ function buildInstUI() {
   }
   errEl.classList.add('hidden');
   card.classList.remove('hidden');
-  document.getElementById('instOff').classList.toggle('hidden', I.on);
-  document.getElementById('instBody').classList.toggle('hidden', !I.on);
-  if (!I.on) return;
+  const hayGrupos = (cot.instGrupos||[]).length > 0;
+  document.getElementById('instOff').classList.toggle('hidden', hayGrupos);
+  document.getElementById('instBody').classList.toggle('hidden', !hayGrupos);
+  if (!hayGrupos) return;
+
+  // Tabs de grupos — con un solo grupo no hace falta tocar nada de esto
+  // (comportamiento idéntico al de antes); con más de uno, cada tab es un
+  // grupo de instalación independiente con su propio m²/tipo/materiales.
+  document.getElementById('instGrupoTabs').innerHTML =
+    cot.instGrupos.map((g,i)=>`
+      <span class="inst-tab ${i===instActivo?'active':''}" onclick="instActivarGrupo(${i})">
+        ${escHtml_(g.nombre||'Instalación')}
+        ${cot.instGrupos.length>1 ? '<span class="inst-tab-x" onclick="event.stopPropagation();instActivarGrupo('+i+');instQuitarGrupoActivo()" title="Quitar este grupo">✕</span>' : ''}
+      </span>`).join('') +
+    `<span class="inst-tab inst-tab-add" onclick="instAgregarGrupo()">+ Agregar grupo</span>`;
+  document.getElementById('instNombreGrupo').value = I.nombre || '';
+
+  // Asignación de productos al grupo activo — sólo hace falta elegir
+  // cuando hay más de un grupo (con uno solo, es todo el carrito).
+  const wrapAsig = document.getElementById('instAsignWrap');
+  if (cot.instGrupos.length > 1) {
+    wrapAsig.classList.remove('hidden');
+    const idsActivo = instItemIdsDe_(I);
+    document.getElementById('instAsign').innerHTML = cot.items.length ? cot.items.map(it=>`
+      <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 0;">
+        <input type="checkbox" style="width:auto" ${idsActivo.indexOf(it._itemId)!==-1?'checked':''}
+          onchange="instToggleItemEnGrupo('${it._itemId}',this.checked)"> ${escHtml_(it.desc)} ${it.medidas&&it.medidas!=='—'?'<span style="color:#999">'+escHtml_(it.medidas)+'</span>':''}
+      </label>`).join('') : '<div style="font-size:12px;color:#999;">Agregá productos al carrito primero.</div>';
+  } else {
+    wrapAsig.classList.add('hidden');
+  }
+
   if (!Object.keys(I.tiposSel).some(k=>I.tiposSel[k]) && (MAESTRO.tipos||[]).length) {
     const def = MAESTRO.tipos[1]||MAESTRO.tipos[0];
     I.tiposSel[def.id] = true;
@@ -947,7 +1078,7 @@ function buildInstUI() {
 
 function instRecalc(skipCart) {
   const I = instEnsure();
-  if (!I.on || !MAESTRO) { if (!skipCart) renderCart(); return; }
+  if (!cot.instGrupos.length || !MAESTRO) { if (!skipCart) renderCart(); return; }
   const c = instCalc();
   const m2 = c.m2;
   (MAESTRO.materiales||[]).forEach(m=>{
@@ -993,14 +1124,14 @@ function instRecalc(skipCart) {
   const warns=[];
   if (c.m2<=0) warns.push('Cargá los m² a instalar.');
   if (!Object.keys(I.tiposSel).some(k=>I.tiposSel[k])) warns.push('Elegí al menos un tipo de colocación.');
-  if (I.modo==='int' && !cot.items.length) warns.push('Modo integrado: agregá el producto al carrito primero.');
+  if (I.modo==='int' && !instItemIdsDe_(I).length) warns.push('Modo integrado: asigná al menos un producto a este grupo.');
   document.getElementById('instWarn').innerHTML = warns.length ? '<div class="inst-warn">⚠ '+warns.join(' · ')+'</div>' : '';
   if (!skipCart) renderCart();
 }
 
-// Bloque "LA INSTALACIÓN INCLUYE" para el PDF (sin costos)
+// Bloque "LA INSTALACIÓN INCLUYE" para el PDF (sin costos) — de UN grupo
 function instIncludeHtml(I) {
-  if (!I || !I.on) return '';
+  if (!I) return '';
   const li = [];
   if (I.tipos && I.tipos.length) li.push('<b>Mano de obra:</b> ' + I.tipos.join(' + ') + ' — equipo de ' + (I.equipo||'colocadores') + '.');
   if (I.fiscal) li.push('<b>Supervisión técnica de obra</b> (fiscal técnico).');
@@ -1009,7 +1140,7 @@ function instIncludeHtml(I) {
   if (!li.length) return '';
   return `
     <div class="pr-sec">
-      <div class="pr-sec-t">La instalación incluye (${fmtAR(I.m2,2)} m²)</div>
+      <div class="pr-sec-t">La instalación incluye${I.nombre ? ' — ' + escHtml_(I.nombre) : ''} (${fmtAR(I.m2,2)} m²)</div>
       <div style="font-size:10.5px;line-height:1.55;color:#333;">${li.map(x=>'• '+x).join('<br>')}</div>
     </div>`;
 }
@@ -1038,7 +1169,7 @@ let cotSuccessBanner_ = '';
 let cot = nuevaCotObj();
 
 function nuevaCotObj() {
-  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', estudioId:'', nombreObra:'', direccionObra:'', notas:'', inst: instDefault(), adjuntos:[] };
+  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', estudioId:'', nombreObra:'', direccionObra:'', notas:'', instGrupos:[], adjuntos:[] };
 }
 
 // ---------- Login ----------
@@ -1245,6 +1376,7 @@ function agregarItemPorM2_(p) {
   if (!m2 || m2 <= 0) { alert('Ingresá un número de m² válido.'); return null; }
   const cantidad = m2 * p.consumoPorM2;
   return {
+    _itemId: nextItemId_(),
     desc: `${p.madera} ${p.perfil}`, cat: p.cat, medidas: p.medidas, largos: p.largos,
     u: p.consumoUnidad || p.u, precio: p.a, precioLista: p.a,
     cantReal: cantidad, desp: 0, cant: cantidad, conClip: false,
@@ -1268,6 +1400,7 @@ function agregarItem(i) {
   const ex = cot.items.find(it => it.idx===i && !it.conClip);
   if (ex && p.con_clip_a===undefined) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); renderCart(); return; }
   const it = {
+    _itemId: nextItemId_(),
     idx:i, desc:`${p.madera} ${p.perfil}`, cat:p.cat, medidas:p.medidas, largos:p.largos,
     u:p.u, precio:p.a, precioLista:p.a, cantReal:1, desp:despPct, cant:1, conClip:false, comentario:'',
     // ★ Costo Nac. Mt2 USD (col. S de la lista de precios, o H en Parky) — se
@@ -1332,8 +1465,15 @@ function quitarItem(k) { cot.items.splice(k,1); renderCart(); }
 // comentario a propósito — guardarCotInterno_ exige uno si hay 2+ líneas
 // del mismo producto, para que quede clara la razón de la separación.
 function duplicarItem(k) {
-  const copia = Object.assign({}, cot.items[k], { comentario: '' });
+  const original = cot.items[k];
+  const nuevoId = nextItemId_();
+  const copia = Object.assign({}, original, { _itemId: nuevoId, comentario: '' });
   cot.items.push(copia);
+  // La línea nueva hereda el/los grupo(s) de instalación de la original —
+  // si no, quedaría fuera de la instalación sin que nadie lo note.
+  (cot.instGrupos||[]).forEach(g => {
+    if (g.itemIds && g.itemIds.indexOf(original._itemId) !== -1) g.itemIds.push(nuevoId);
+  });
   renderCart();
 }
 function setDespItem(k, v) {
@@ -1410,8 +1550,7 @@ function renderRentabilidadReal(t) {
     costoMadera += cu * (parseFloat(it.cant) || 0);
   });
 
-  const c = instCalc();
-  const costoInstalacion = (cot.inst && cot.inst.on && MAESTRO) ? c.costoTotal : 0;
+  const costoInstalacion = MAESTRO ? (cot.instGrupos||[]).reduce((s,I)=>s+instCalcG(I).costoTotal, 0) : 0;
 
   const costoTotal = costoMadera + costoInstalacion + t.com + t.comVend;
   const margenBruto = t.total - costoTotal;
@@ -1502,7 +1641,7 @@ function renderCart(full) {
         <td class="num">${fmt(it.cant)} <small>m²</small></td>
         <td class="num">USD ${fmt(it.precio)}</td>
         <td class="num"><b>USD ${fmt(it.precio*it.cant)}</b></td>
-        <td><span class="rm" onclick="instToggle(false)" title="Quitar instalación">✕</span></td>
+        <td><span class="rm" onclick="instQuitarGrupoPorId_('${it._grupoId}')" title="Quitar este grupo de instalación">✕</span></td>
       </tr>`;
       const k = it._k;
       const p = D[it.idx] || {};
@@ -1542,7 +1681,7 @@ function renderCart(full) {
     cot.items.forEach((it,k)=>{});
     return renderCart(true);
   }
-  if (cot.inst && cot.inst.on && cot.inst.modo==='int') instTargetVis();
+  if ((cot.instGrupos||[]).some(I=>I.modo==='int')) instTargetVis();
   // ★ Aviso general si hay precios pisados a mano (Gerencia se entera al guardar)
   const nMod = itemsView().filter(it => !it._pseudo && precioModificado_(it)).length;
   const warnEl = document.getElementById('pmodWarn');
@@ -1631,6 +1770,7 @@ function setPdfFields(c) {
 
 function nuevaCot() {
   cot = nuevaCotObj();
+  instActivo = 0;
   document.getElementById('inDesc').value = 0;
   document.getElementById('inDespMadera').value = 0;
   document.getElementById('inRedondeo').value = '';
@@ -1711,9 +1851,8 @@ async function guardarCotInterno_(estadoForzado) {
       action:'cotSave', token: currentUser.token,
       id: cot.id, estado: cot.estado,
       clienteId: cliente ? cliente.id : '', clienteNombre: clienteNombreFinal, nombreObra: nombreObra,
-      items: itemsView().map(it=>({desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||'', costoUn:(it.costoUn!==undefined && it.costoUn!==null && it.costoUn!=='') ? it.costoUn : undefined})),
-      inst: instSnapshot(),
-      instCfg: instCfg(),
+      items: itemsView().map(it=>({_itemId:it._itemId, desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||'', costoUn:(it.costoUn!==undefined && it.costoUn!==null && it.costoUn!=='') ? it.costoUn : undefined})),
+      instGrupos: instGruposPayload_(),
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
       padreId: cot.padreId || '',
@@ -1759,7 +1898,7 @@ async function generarMemoIA() {
     const r = await API.post({
       action: 'cotGenerarMemo', token: currentUser.token,
       items: items.map(it => ({ desc: it.desc, medidas: it.medidas, cant: it.cant, u: it.u })),
-      inst: instSnapshot(),
+      insts: (cot.instGrupos||[]).map(instSnapshotG).filter(Boolean),
       contexto: document.getElementById('inMemoContexto').value.trim()
     });
     if (!r.ok) { status.className = 'status-msg err'; status.textContent = 'Error: ' + r.error; return; }
@@ -1827,7 +1966,7 @@ async function guardarImprimirEnviar() {
   const msg = document.getElementById('cotMsg');
   const cliente = res.cliente;
 
-  buildPrint({ id:cot.id, items:itemsView(), inst:instSnapshot(), descPct:cot.descPct, notas:cot.notas, vendedor:cot.vendedor,
+  buildPrint({ id:cot.id, items:itemsView(), instGrupos:(cot.instGrupos||[]).map(instSnapshotG).filter(Boolean), descPct:cot.descPct, notas:cot.notas, vendedor:cot.vendedor,
     condPago:cot.condPago, validez:cot.validez, lugarEnt:cot.lugarEnt,
     plazoEnt:cot.plazoEnt, transEnt:cot.transEnt, ivaPct:cot.ivaPct, tc:cot.tc,
     estudioArq:cot.estudioArq, nombreObra:cot.nombreObra, direccionObra:cot.direccionObra,
@@ -2008,6 +2147,7 @@ async function abrirCot(id, duplicar) {
   if (!r.ok) return alert('No se pudo cargar: ' + r.error);
   const c = r.cot;
   cot = nuevaCotObj();
+  instActivo = 0;
   cot.id = duplicar ? null : c.id;
   cot.estado = duplicar ? 'Borrador' : c.estado;
   cot.adjuntos = duplicar ? [] : (c.adjuntos || []); // los documentos no se copian al duplicar/versionar — quedan ligados a la cotización original
@@ -2023,10 +2163,12 @@ async function abrirCot(id, duplicar) {
   cot.clienteId = c.clienteId;
   cot.vendedor = c.vendedor;
   cot.padreId = duplicar ? '' : (c.padreId || '');
-  const tieneInstCfg = !!(MAESTRO && c.instCfg && c.inst && c.inst.on); // sin Maestro (ventas), la instalación queda como ítem congelado con su precio guardado
-  cot.inst = tieneInstCfg ? instDesdeCfg(c.instCfg) : instDefault();
+  // sin Maestro (ventas), la instalación queda como ítem(s) congelado(s) con su precio guardado
+  const gruposRaw = (MAESTRO && c.instGrupos && c.instGrupos.length) ? c.instGrupos : [];
+  const tieneInstCfg = gruposRaw.length > 0;
+  cot.instGrupos = tieneInstCfg ? gruposRaw.map(g => instGrupoDesdeCfg_(g.cfg||{})) : [];
   cot.items = c.items
-    .filter(it => !(tieneInstCfg && it.cat==='Instalación'))  // el ítem de instalación se regenera desde la config
+    .filter(it => !(tieneInstCfg && it.cat==='Instalación'))  // el/los ítem(s) de instalación se regeneran desde la config
     .map(it => {
     // re-vincular al producto actual por descripción+medidas para tomar precio vigente al duplicar
     const descBase = String(it.desc||'').replace(/ — instalación incluida$/,'');
@@ -2044,16 +2186,28 @@ async function abrirCot(id, duplicar) {
       precioLista = precio; // duplicar toma precios vigentes de lista (resetea modificaciones)
       costoUn = D[idx].costoNacMt2Usd;
     }
+    // ★ Se conserva el _itemId guardado (también al duplicar) — es lo que
+    // mantiene la asignación de cada producto a su grupo de instalación.
+    // Reusar el id en una cotización NUEVA es seguro: sólo necesita ser
+    // único dentro de esta misma cotización.
+    const itemId = it._itemId || nextItemId_();
     if (tieneInstCfg && / — instalación incluida$/.test(String(it.desc||'')) && !duplicar) {
       // quitar la parte de instalación del precio guardado: se recalcula en vivo
-      const pi = (c.inst.precioTotal||0) / (parseFloat(it.cant)||1);
+      const gMatch = gruposRaw.find(g => g.cfg && g.cfg.modo==='int' && g.cfg.targetId === itemId) || (gruposRaw.length===1 ? gruposRaw[0] : null);
+      const piTotal = (gMatch && gMatch.snapshot) ? (gMatch.snapshot.precioTotal||0) : 0;
+      const pi = piTotal / (parseFloat(it.cant)||1);
       precio = Math.max(0, precio - pi);
       if (precioLista !== undefined) precioLista = Math.max(0, precioLista - pi);
     }
     if (precioLista === undefined) precioLista = precio; // cotizaciones viejas sin lista guardada: sin falso aviso
-    return { idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, precioLista, cant:it.cant,
+    return { _itemId: itemId, idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, precioLista, cant:it.cant,
       cantReal: (it.cantReal!==undefined ? it.cantReal : it.cant), desp: it.desp||0, conClip:!!it.conClip,
       comentario: (duplicar ? '' : (it.comentario || '')), costoUn };
+  });
+  // Evita colisiones de _itemId con los próximos productos que se agreguen
+  cot.items.forEach(it => {
+    const n = parseInt(String(it._itemId||'').replace(/^it/,''), 10);
+    if (!isNaN(n) && n > itemIdSeq) itemIdSeq = n;
   });
   document.getElementById('inDesc').value = cot.descPct||0;
   document.getElementById('inDespMadera').value = cot.despMaderaPct||0;
@@ -2755,7 +2909,7 @@ function buildPrint(c, clienteObj) {
       </table>
     </div>
 
-    ${instIncludeHtml(c.inst)}
+    ${(c.instGrupos||[]).map(instIncludeHtml).join('')}
     <div class="pr-bottom">
       <div class="pr-notes-fisc">
         ${tc>0 ? 'Tipo de cambio utilizado: 1 USD = ARS $ ' + fmtAR(tc) + '.<br>' : ''}
@@ -2812,6 +2966,7 @@ async function pdfDesdeLista(id) {
   if (!r.ok) return alert('No se pudo cargar');
   const cli = CLIENTES.find(c=>c.id===r.cot.clienteId);
   r.cot.estudioObj = ESTUDIOS.find(e=>e.id===r.cot.estudioId);
+  r.cot.instGrupos = (r.cot.instGrupos||[]).map(g=>g.snapshot).filter(Boolean);
   buildPrint(r.cot, cli || { razonSocial: r.cot.clienteNombre });
   imprimirConNombre_(nombreArchivoCot_((cli && cli.razonSocial) || r.cot.clienteNombre, r.cot.id));
 }
