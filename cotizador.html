@@ -214,6 +214,7 @@
   <button class="tab" id="tab-clientes" onclick="showTab('clientes')">👤 Clientes</button>
   <button class="tab" id="tab-estudios" onclick="showTab('estudios')">🏛 Estudios</button>
   <button class="tab hidden" id="tab-catalogo" onclick="showTab('catalogo')">📚 Catálogo</button>
+  <button class="tab" id="tab-feedback" onclick="showTab('feedback')">💬 Feedback</button>
 </div>
 <main>
 
@@ -577,6 +578,24 @@
       <div class="status-msg" id="catStatus" style="margin-top:6px;"></div>
       <div id="catList" style="margin-top:12px;"></div>
     </div>
+  </div>
+
+  <!-- ===== TAB FEEDBACK (todos) ===== -->
+  <div id="pane-feedback" class="hidden">
+    <div class="card">
+      <h3>💬 Feedback</h3>
+      <div style="font-size:12.5px;color:#666;margin-bottom:10px;">
+        Contá qué necesitás o qué mejorarías del cotizador o del Portal. <b>Es anónimo</b>: nadie ve quién escribió cada pedido,
+        y el texto se reescribe en tono neutro antes de mostrarse. Lo resuelto queda tachado 30 días por si hace falta objetarlo.
+      </div>
+      <textarea id="fbTexto" rows="4" maxlength="2000" style="width:100%;" placeholder="Ej: Sería útil poder filtrar las guardadas por vendedor"></textarea>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:10px;">
+        <label style="cursor:pointer;"><input type="radio" name="fbPrio" value="urgente"> 🔴 Urgente</label>
+        <label style="cursor:pointer;"><input type="radio" name="fbPrio" value="no_urgente" checked> 🟢 No tan urgente</label>
+        <button class="btn btn-gold" id="fbEnviarBtn" style="margin-left:auto;" onclick="enviarFeedback()">Enviar</button>
+      </div>
+    </div>
+    <div id="fbLista"></div>
   </div>
 
 </main>
@@ -1285,11 +1304,74 @@ async function reintentarMaestro() {
 
 // ---------- Tabs ----------
 function showTab(t) {
-  ['nueva','lista','clientes','estudios','catalogo'].forEach(x => {
+  ['nueva','lista','clientes','estudios','catalogo','feedback'].forEach(x => {
     document.getElementById('pane-'+x).classList.toggle('hidden', x!==t);
     document.getElementById('tab-'+x).classList.toggle('active', x===t);
   });
   if (t === 'catalogo' && !CATALOGO.cargado) cargarCatalogo();
+  if (t === 'feedback') cargarFeedbackLista_();
+}
+
+// ---------- 💬 Feedback (todos, 2026-09-28) ----------
+// Tablero ANÓNIMO compartido con el Portal de Obras (misma hoja en el
+// backend): nadie ve quién cargó qué. Se muestra la versión despersonalizada
+// que arma el backend con IA; cada uno ve además su texto original en lo
+// suyo. Lo resuelto aparece tachado con "Se resolvió con: …" y desaparece
+// a los 30 días si nadie lo objeta. Nada se publica sin OK de Franco.
+async function cargarFeedbackLista_() {
+  const cont = document.getElementById('fbLista');
+  cont.innerHTML = '<div style="color:#aaa;padding:14px;">Cargando…</div>';
+  try {
+    const r = await API.get({ action:'feedbackList', token: currentUser.token });
+    if (!r.ok) throw new Error(r.error);
+    cont.innerHTML = r.items.length ? r.items.map(renderFeedbackItem_).join('')
+      : '<div style="color:#aaa;padding:14px;">Todavía no hay pedidos. ¡Sé el primero!</div>';
+  } catch (e) {
+    cont.innerHTML = '<div style="color:#b33;padding:14px;">No pude cargar el feedback: ' + escHtml_(e.message || e) + '</div>';
+  }
+}
+
+function renderFeedbackItem_(it) {
+  const cerrado = it.estado === 'resuelto' || it.estado === 'descartado';
+  const color = { esperando_aprobacion:'#b8860b', objetado:'#b8860b', aprobado:'#3d7a3d', resuelto:'#3d7a3d' }[it.estado] || '#777';
+  return `<div class="card" style="${cerrado ? 'opacity:.75;' : ''}">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:12px;color:#777;margin-bottom:6px;">
+      <span>${it.prioridad === 'urgente' ? '🔴 Urgente' : '🟢 No tan urgente'}</span>
+      <span style="border:1px solid ${color};color:${color};border-radius:10px;padding:1px 8px;">${escHtml_(it.estadoLabel)}</span>
+      ${it.mio ? '<span style="background:#C9A227;color:#111;border-radius:10px;padding:1px 8px;">mío</span>' : ''}
+      <span style="margin-left:auto;">${escHtml_(it.id)} · ${escHtml_(new Date(it.fecha).toLocaleDateString('es-AR'))}</span>
+    </div>
+    <div style="font-size:14px;line-height:1.45;white-space:pre-wrap;${cerrado ? 'text-decoration:line-through;color:#888;' : ''}">${it.procesando ? '<i>Procesando el texto…</i>' : escHtml_(it.texto)}</div>
+    ${it.mio && it.textoOriginal && it.textoOriginal !== it.texto ? `<div style="font-size:12px;color:#999;margin-top:6px;">Lo que escribiste (solo lo ves vos): ${escHtml_(it.textoOriginal)}</div>` : ''}
+    ${cerrado && it.resolucion ? `<div style="font-size:13px;color:#3d7a3d;margin-top:8px;">${it.estado === 'resuelto' ? 'Se resolvió con' : 'Motivo'}: ${escHtml_(it.resolucion)}</div>` : ''}
+    ${cerrado ? `<div style="margin-top:8px;"><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="objetarFeedback('${escHtml_(it.id)}')">No quedó bien → objetar</button></div>` : ''}
+  </div>`;
+}
+
+async function enviarFeedback() {
+  const texto = document.getElementById('fbTexto').value.trim();
+  const prio = (document.querySelector('input[name="fbPrio"]:checked') || {}).value;
+  if (!texto) { alert('Escribí tu pedido o sugerencia.'); return; }
+  const btn = document.getElementById('fbEnviarBtn');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    const r = await API.post({ action:'feedbackCrear', texto, prioridad: prio, origen:'cotizador', token: currentUser.token });
+    if (!r.ok) throw new Error(r.error);
+    document.getElementById('fbTexto').value = '';
+    await cargarFeedbackLista_();
+  } catch (e) {
+    alert('No se pudo enviar: ' + (e.message || e));
+  } finally {
+    btn.disabled = false; btn.textContent = 'Enviar';
+  }
+}
+
+async function objetarFeedback(id) {
+  const texto = prompt('¿Qué no quedó bien? (es anónimo)');
+  if (!texto || !texto.trim()) return;
+  const r = await API.post({ action:'feedbackObjetar', id, texto: texto.trim(), token: currentUser.token });
+  if (r.ok) cargarFeedbackLista_();
+  else alert('No se pudo objetar: ' + (r.error || ''));
 }
 
 // ---------- Catálogo completo (solo Gerencia) ----------
