@@ -604,6 +604,32 @@
   </div>
 </div>
 
+<div id="modalPorM2" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;padding:22px;">
+    <h3 id="pm2Titulo" style="margin:0 0 4px;">Agregar producto</h3>
+    <div id="pm2Sub" style="font-size:12.5px;color:#666;margin-bottom:14px;"></div>
+
+    <div id="pm2ModoM2">
+      <label style="font-size:12px;font-weight:700;">Metros cuadrados (m²)</label>
+      <select id="pm2SelectMadre" style="width:100%;margin:4px 0 8px;padding:8px;border:1px solid #ddd;border-radius:8px;font:inherit;" onchange="pm2AplicarMadre_()"></select>
+      <input type="number" id="pm2InputM2" step="0.01" min="0" oninput="pm2Recalcular_()" style="width:100%;margin:0 0 6px;padding:8px;border:1px solid #ddd;border-radius:8px;font:inherit;">
+      <div id="pm2Resultado" style="font-size:12.5px;color:#333;margin-bottom:10px;min-height:16px;"></div>
+      <a href="#" onclick="return pm2ModoUnidad_();" style="font-size:11.5px;color:#888;">Prefiero cotizar por cantidad, no por m²</a>
+    </div>
+
+    <div id="pm2ModoUnidad" class="hidden">
+      <label style="font-size:12px;font-weight:700;">Cantidad (<span id="pm2UnidadLabel"></span>)</label>
+      <input type="number" id="pm2InputCantidad" step="1" min="0" style="width:100%;margin:4px 0 10px;padding:8px;border:1px solid #ddd;border-radius:8px;font:inherit;">
+      <a href="#" onclick="return pm2ModoM2_();" style="font-size:11.5px;color:#888;">Volver a cotizar por m²</a>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn-sec" onclick="cerrarModalPorM2_()">Cancelar</button>
+      <button class="btn" onclick="confirmarPorM2_()">Agregar</button>
+    </div>
+  </div>
+</div>
+
 <div id="modalDestinatarioMail" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:16px;">
   <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;padding:22px;">
     <h3 style="margin:0 0 4px;">¿A quién le mandamos la cotización?</h3>
@@ -1362,38 +1388,136 @@ function setDespMadera(v) {
   renderCart();
 }
 
-// ★ 2026-09-19: productos "por m²" (ej. tornillos de fijación, alfajías) —
-// el vendedor no elige la cantidad real directamente, ingresa los M² a
-// cubrir y la cantidad facturable sale de m² × consumoPorM2 (tasa que
-// define Gerencia en el producto). Se agrega SIEMPRE con una leyenda en
-// "comentario" (que ya se imprime en el carrito y en el PDF) explicando
-// cuánto le llega al cliente — no es opcional, es la forma en que se
-// evita el reclamo de "no entendí cuántos tornillos me estás cobrando".
-function agregarItemPorM2_(p) {
-  const m2Str = prompt('¿Cuántos m² vas a cubrir con "' + p.madera + ' ' + p.perfil + '"?');
-  if (m2Str === null) return null;
-  const m2 = parseFloat(String(m2Str).replace(',', '.'));
-  if (!m2 || m2 <= 0) { alert('Ingresá un número de m² válido.'); return null; }
-  const cantidad = m2 * p.consumoPorM2;
-  return {
+// ★ 2026-09-19 (v2 2026-09-28): productos "por m²" (ej. tornillos de
+// fijación, alfajías, CUTEK) — el vendedor no elige la cantidad real
+// directamente, ingresa los M² a cubrir. Dos formas de calcular la
+// cantidad, según qué trae el producto:
+//   - consumoPorM2 (simple, ej. tornillos): cantidad = m2 × consumoPorM2,
+//     sin redondeo (fraccionaria está bien: pares, metros lineales, etc).
+//   - rendimientoM2 (ej. CUTEK, se vende por unidad entera — galón):
+//     cantidad = ceil((m2 × (1+reservaPct)) / rendimientoM2). reservaPct
+//     es el % de desperdicio/reserva de obra, redondeando siempre hacia
+//     arriba porque no se puede vender medio galón.
+// Antes esto era un prompt() del navegador preguntando los m² de cero cada
+// vez. Ahora, si ya hay un producto "madre" (deck/revestimiento, u='m²')
+// cargado en el carrito, se le toman los m² de ahí — el vendedor solo
+// confirma, no tiene que ir a mirar cuánto había cargado. Si hay más de
+// un candidato, elige de cuál. Si no hay ninguno, lo carga a mano. Siempre
+// se puede optar por cotizar por cantidad directa en vez de por m².
+function calcularCantidadPorM2_(p, m2) {
+  if (p.rendimientoM2) {
+    const conReserva = m2 * (1 + (parseFloat(p.reservaPct) || 0));
+    return Math.ceil(conReserva / p.rendimientoM2);
+  }
+  return m2 * p.consumoPorM2;
+}
+
+function candidatosMadre_() {
+  return cot.items
+    .map((it, k) => ({ it, k }))
+    .filter(({ it }) => it.u === 'm²' && !it._porM2);
+}
+
+let PM2_STATE = null;
+
+function abrirModalPorM2_(p, i) {
+  PM2_STATE = { p, i };
+  document.getElementById('pm2Titulo').textContent = `${p.madera} ${p.perfil}`.trim();
+  const candidatos = candidatosMadre_();
+  const sel = document.getElementById('pm2SelectMadre');
+  if (candidatos.length) {
+    sel.innerHTML = '<option value="">— Elegir de un producto del carrito —</option>' +
+      candidatos.map(({ it, k }) => `<option value="${k}">${escHtml_(it.desc)} (${fmt(it.cantReal, 2)} m²)</option>`).join('') +
+      '<option value="_manual">Ingresar m² a mano</option>';
+    sel.value = candidatos.length === 1 ? String(candidatos[0].k) : '';
+    document.getElementById('pm2Sub').textContent = candidatos.length === 1
+      ? 'Tomé los m² del producto que ya tenés cargado. Podés editarlo si hace falta.'
+      : 'Elegí de qué producto del carrito tomar los m², o ingresalos a mano.';
+  } else {
+    sel.innerHTML = '<option value="_manual" selected>Ingresar m² a mano</option>';
+    document.getElementById('pm2Sub').textContent = 'Todavía no cargaste el producto principal (deck/revestimiento) en este pedido — ingresá los m² a mano, o cargalo primero y volvé a agregar esto.';
+  }
+  document.getElementById('pm2InputCantidad').value = '';
+  pm2AplicarMadre_();
+  pm2ModoM2_();
+  document.getElementById('modalPorM2').classList.remove('hidden');
+}
+
+function pm2AplicarMadre_() {
+  const sel = document.getElementById('pm2SelectMadre');
+  const input = document.getElementById('pm2InputM2');
+  if (sel.value && sel.value !== '_manual') {
+    const it = cot.items[parseInt(sel.value, 10)];
+    input.value = it ? it.cantReal : '';
+  } else {
+    input.value = '';
+  }
+  pm2Recalcular_();
+}
+
+function pm2Recalcular_() {
+  const { p } = PM2_STATE;
+  const m2 = parseFloat(String(document.getElementById('pm2InputM2').value).replace(',', '.')) || 0;
+  const out = document.getElementById('pm2Resultado');
+  if (!m2) { out.textContent = ''; return; }
+  const cant = calcularCantidadPorM2_(p, m2);
+  const dec = p.rendimientoM2 ? 0 : 2;
+  const reservaTxt = p.rendimientoM2 ? ` (incluye ${Math.round((p.reservaPct || 0) * 100)}% de reserva)` : '';
+  out.textContent = `→ ${fmt(cant, dec)} ${p.consumoUnidad || p.u}${reservaTxt}`;
+}
+
+function pm2ModoUnidad_() {
+  document.getElementById('pm2ModoM2').classList.add('hidden');
+  document.getElementById('pm2ModoUnidad').classList.remove('hidden');
+  document.getElementById('pm2UnidadLabel').textContent = PM2_STATE.p.consumoUnidad || PM2_STATE.p.u;
+  return false;
+}
+function pm2ModoM2_() {
+  document.getElementById('pm2ModoUnidad').classList.add('hidden');
+  document.getElementById('pm2ModoM2').classList.remove('hidden');
+  return false;
+}
+function cerrarModalPorM2_() {
+  document.getElementById('modalPorM2').classList.add('hidden');
+  PM2_STATE = null;
+}
+
+function confirmarPorM2_() {
+  if (!PM2_STATE) return;
+  const { p, i } = PM2_STATE;
+  const porUnidad = !document.getElementById('pm2ModoUnidad').classList.contains('hidden');
+  let cantidad, comentario, m2Origen = null;
+  if (porUnidad) {
+    cantidad = parseFloat(String(document.getElementById('pm2InputCantidad').value).replace(',', '.'));
+    if (!cantidad || cantidad <= 0) { alert('Ingresá una cantidad válida.'); return; }
+    comentario = `Cotizado por cantidad directa: ${fmt(cantidad, 2)} ${p.consumoUnidad || p.u}.`;
+  } else {
+    const m2 = parseFloat(String(document.getElementById('pm2InputM2').value).replace(',', '.'));
+    if (!m2 || m2 <= 0) { alert('Ingresá un número de m² válido.'); return; }
+    cantidad = calcularCantidadPorM2_(p, m2);
+    m2Origen = m2;
+    comentario = p.rendimientoM2
+      ? `Cotizado para ${fmt(m2, 2)} m² (+${Math.round((p.reservaPct || 0) * 100)}% reserva) a razón de ${p.rendimientoM2} m²/${p.consumoUnidad || p.u} → ${fmt(cantidad, 0)} ${p.consumoUnidad || p.u}.`
+      : `Cotizado para ${fmt(m2, 2)} m² a razón de ${p.consumoPorM2} ${p.consumoUnidad}/m² → ${fmt(cantidad, 2)} ${p.consumoUnidad}.`;
+  }
+  const it = {
     _itemId: nextItemId_(),
-    desc: `${p.madera} ${p.perfil}`, cat: p.cat, medidas: p.medidas, largos: p.largos,
+    idx: i, desc: `${p.madera} ${p.perfil}`, cat: p.cat, medidas: p.medidas, largos: p.largos,
     u: p.consumoUnidad || p.u, precio: p.a, precioLista: p.a,
     cantReal: cantidad, desp: 0, cant: cantidad, conClip: false,
-    comentario: `Cotizado para ${fmt(m2,2)} m² a razón de ${p.consumoPorM2} ${p.consumoUnidad}/m² → ${fmt(cantidad,2)} ${p.consumoUnidad}.`,
+    comentario: comentario,
     costoUn: p.costoNacMt2Usd,
-    _porM2: true, _m2Origen: m2, _consumoPorM2: p.consumoPorM2
+    _porM2: !porUnidad, _m2Origen: m2Origen
   };
+  cot.items.push(it);
+  cerrarModalPorM2_();
+  renderCart();
 }
 
 function agregarItem(i) {
   const p = D[i];
-  if (p.consumoPorM2) {
-    const it = agregarItemPorM2_(p);
-    if (!it) return;
-    it.idx = i;
-    cot.items.push(it);
-    renderCart();
+  if (p.consumoPorM2 || p.rendimientoM2) {
+    abrirModalPorM2_(p, i);
     return;
   }
   const despPct = cot.despMaderaPct || 0;
