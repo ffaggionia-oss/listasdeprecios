@@ -817,7 +817,9 @@ function instCalcG(I) {
 // Ítems "materializados": productos + instalación de TODOS los grupos
 // (cada grupo separado, o integrado al producto que le corresponda)
 function itemsView() {
-  const base = cot.items.map((it,k)=>Object.assign({_k:k}, it));
+  // El sufijo de Largo Fijo / EndMatch va en el desc que se guarda, para que
+  // se vea en el PDF, los mails y el Portal (compras necesita saberlo).
+  const base = cot.items.map((it,k)=>Object.assign({_k:k}, it, { desc: it.desc + sufijoLfEm_(it) }));
   if (!MAESTRO) return base;
   (cot.instGrupos||[]).forEach(I => {
     const c = instCalcG(I);
@@ -1507,6 +1509,7 @@ function confirmarPorM2_() {
     cantReal: cantidad, desp: 0, cant: cantidad, conClip: false,
     comentario: comentario,
     costoUn: p.costoNacMt2Usd,
+    lf: false, em: false, precioMaderaBase: p.a, precioClipAdd: 0, costoUnBase: p.costoNacMt2Usd,
     _porM2: !porUnidad, _m2Origen: m2Origen
   };
   cot.items.push(it);
@@ -1541,7 +1544,8 @@ function agregarItem(i) {
     // rentabilidad de Nicolás no dependa de que el precio de compra siga
     // siendo el mismo el día de mañana. Puede venir undefined si la planilla
     // no tiene ese dato cargado para este producto.
-    costoUn: p.costoNacMt2Usd
+    costoUn: p.costoNacMt2Usd,
+    lf: false, em: false, precioMaderaBase: p.a, precioClipAdd: 0, costoUnBase: p.costoNacMt2Usd
   };
   recalcCantFact(it);
   cot.items.push(it);
@@ -1551,9 +1555,47 @@ function agregarItem(i) {
 function toggleClip(k) {
   const it = cot.items[k]; const p = D[it.idx];
   it.conClip = !it.conClip;
-  const lista = it.conClip ? p.con_clip_a : p.a;
-  it.precio = lista;        // cambiar el clip resetea cualquier precio manual
-  it.precioLista = lista;
+  it.precioMaderaBase = p.a;
+  it.precioClipAdd = (it.conClip && p.con_clip_a !== undefined) ? p.con_clip_a - p.a : 0;
+  recalcPrecioLfEm_(it);    // cambiar el clip resetea cualquier precio manual
+  renderCart();
+}
+// ★ 2026-09-28: Largo Fijo / EndMatch opcionales por línea, para cualquier
+// producto de madera (no sólo los que tienen "SI" en las columnas G/H de la
+// planilla). El recargo va sobre el valor base (FOB): como en la planilla
+// todo lo demás (costo nacionalizado, Lista A/B/C) sale proporcional del FOB,
+// eso equivale a subir en el mismo % el precio de lista Y el costo de la
+// línea. Si lleva los dos, los % se suman (+14%, no 1,10 × 1,04). El recargo
+// no se aplica a la parte del clip (en "con clip" sólo sube la madera).
+// Mismos % que LARGO_FIJO_PCT / ENDMATCH_PCT del backend.
+const LF_PCT = 0.10, EM_PCT = 0.04;
+const CATS_LF_EM = ['Decking', 'Cladding Hardwood', 'Cladding Softwood', 'Parky'];
+function admiteLfEm_(it) { return CATS_LF_EM.indexOf(it.cat) !== -1; }
+function factorLfEm_(it) { return 1 + (it.lf ? LF_PCT : 0) + (it.em ? EM_PCT : 0); }
+function sufijoLfEm_(it) {
+  const s = [];
+  if (it.lf) s.push('Largo Fijo');
+  if (it.em) s.push('EndMatch');
+  return s.length ? ' — ' + s.join(' + ') : '';
+}
+// Precio de lista y costo de la línea a partir de sus bases sin recargo
+// (precioMaderaBase / precioClipAdd / costoUnBase, fijadas al crear la línea).
+function recalcPrecioLfEm_(it) {
+  const f = factorLfEm_(it);
+  const base = parseFloat(it.precioMaderaBase);
+  if (!isNaN(base)) {
+    const lista = Math.round((base * f + (parseFloat(it.precioClipAdd) || 0)) * 10000) / 10000;
+    it.precio = lista;
+    it.precioLista = lista;
+  }
+  const cb = parseFloat(it.costoUnBase);
+  if (!isNaN(cb)) it.costoUn = Math.round(cb * f * 10000) / 10000;
+}
+function toggleLfEm(k, cual) {
+  const it = cot.items[k];
+  if (!admiteLfEm_(it)) return;
+  it[cual] = !it[cual];
+  recalcPrecioLfEm_(it);    // igual que el clip: resetea cualquier precio manual
   renderCart();
 }
 // ★ Precio editable por ítem: el vendedor puede pisar el precio de lista.
@@ -1780,6 +1822,9 @@ function renderCart(full) {
       const p = D[it.idx] || {};
       const clipHtml = (p.con_clip_a!==undefined)
         ? `<div class="clip-toggle"><label style="display:inline;cursor:pointer;"><input type="checkbox" ${it.conClip?'checked':''} onchange="toggleClip(${k})" style="width:auto"> con clip</label></div>` : '';
+      const lfEmHtml = admiteLfEm_(it)
+        ? `<div class="clip-toggle"><label style="display:inline;cursor:pointer;"><input type="checkbox" ${it.lf?'checked':''} onchange="toggleLfEm(${k},'lf')" style="width:auto"> Largo Fijo (+10%)</label>
+           &nbsp;<label style="display:inline;cursor:pointer;"><input type="checkbox" ${it.em?'checked':''} onchange="toggleLfEm(${k},'em')" style="width:auto"> EndMatch (+4%)</label></div>` : '';
       const mergedTag = it._instMerged ? '<div style="font-size:10px;color:#C9A227;font-weight:800">🔧 instalación integrada al precio</div>' : '';
       const cantReal = it.cantReal!==undefined ? it.cantReal : it.cant;
       // ★ 2026-09-11: desperdicio editable por ítem (antes solo había un %
@@ -1798,7 +1843,7 @@ function renderCart(full) {
         : `<input class="price-input ${pmod ? (abajo?'pmod-down':'pmod-up') : ''}" type="number" min="0" step="any" value="${Number((parseFloat(it.precio)||0).toFixed(4))}" onchange="setPrecio(${k},this.value)">${badge}`;
       const comentarioHtml = `<input type="text" class="comment-input" placeholder="💬 Comentario para el cliente (aparece en la cotización)" value="${escHtml_(it.comentario||'')}" onchange="setComentarioItem(${k},this.value)">`;
       return `<tr${it._instMerged?' style="background:#FBF3DC;"':''}>
-        <td><b>${it.desc}</b><div style="font-size:11px;color:#888">${it.cat}</div>${clipHtml}${mergedTag}${comentarioHtml}</td>
+        <td><b>${it.desc}</b><div style="font-size:11px;color:#888">${it.cat}</div>${clipHtml}${lfEmHtml}${mergedTag}${comentarioHtml}</td>
         <td>${it.medidas}</td>
         <td class="num"><input class="qty-input" type="number" min="0" step="any" value="${cantReal}" onchange="setCant(${k},this.value)"> <small>${it.u}</small>${despInputHtml}</td>
         <td class="num">${precioCell}</td>
@@ -1984,7 +2029,7 @@ async function guardarCotInterno_(estadoForzado) {
       action:'cotSave', token: currentUser.token,
       id: cot.id, estado: cot.estado,
       clienteId: cliente ? cliente.id : '', clienteNombre: clienteNombreFinal, nombreObra: nombreObra,
-      items: itemsView().map(it=>({_itemId:it._itemId, desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||'', costoUn:(it.costoUn!==undefined && it.costoUn!==null && it.costoUn!=='') ? it.costoUn : undefined})),
+      items: itemsView().map(it=>({_itemId:it._itemId, desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||'', costoUn:(it.costoUn!==undefined && it.costoUn!==null && it.costoUn!=='') ? it.costoUn : undefined, lf:!!it.lf, em:!!it.em, precioMaderaBase:it.precioMaderaBase, precioClipAdd:it.precioClipAdd, costoUnBase:it.costoUnBase})),
       instGrupos: instGruposPayload_(),
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
@@ -2304,7 +2349,14 @@ async function abrirCot(id, duplicar) {
     .filter(it => !(tieneInstCfg && it.cat==='Instalación'))  // el/los ítem(s) de instalación se regeneran desde la config
     .map(it => {
     // re-vincular al producto actual por descripción+medidas para tomar precio vigente al duplicar
-    const descBase = String(it.desc||'').replace(/ — instalación incluida$/,'');
+    // El desc guardado puede traer los sufijos " — Largo Fijo + EndMatch" y
+    // " — instalación incluida": se sacan para re-vincular con el catálogo
+    // (en pantalla se vuelven a agregar en vivo desde lf/em).
+    const descSinInst = String(it.desc||'').replace(/ — instalación incluida$/,'');
+    const mLfEm = descSinInst.match(/ — ((?:Largo Fijo|EndMatch)(?: \+ EndMatch)?)$/);
+    const descBase = mLfEm ? descSinInst.slice(0, -mLfEm[0].length) : descSinInst;
+    const lf = !!it.lf || !!(mLfEm && /Largo Fijo/.test(mLfEm[1]));
+    const em = !!it.em || !!(mLfEm && /EndMatch/.test(mLfEm[1]));
     let idx = D.findIndex(p => (p.madera+' '+p.perfil)===descBase && p.medidas===it.medidas);
     if (it.cat==='Instalación') idx = -1;
     let precio = it.precio;
@@ -2333,9 +2385,33 @@ async function abrirCot(id, duplicar) {
       if (precioLista !== undefined) precioLista = Math.max(0, precioLista - pi);
     }
     if (precioLista === undefined) precioLista = precio; // cotizaciones viejas sin lista guardada: sin falso aviso
-    return { _itemId: itemId, idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, precioLista, cant:it.cant,
+    const nuevo = { _itemId: itemId, idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, precioLista, cant:it.cant,
       cantReal: (it.cantReal!==undefined ? it.cantReal : it.cant), desp: it.desp||0, conClip:!!it.conClip,
-      comentario: (duplicar ? '' : (it.comentario || '')), costoUn };
+      comentario: (duplicar ? '' : (it.comentario || '')), costoUn, lf, em };
+    // Bases sin recargo de Largo Fijo / EndMatch (ver recalcPrecioLfEm_).
+    if (duplicar && idx>=0) {
+      // Duplicar: bases vigentes del catálogo, y se reaplica el recargo.
+      nuevo.precioMaderaBase = D[idx].a;
+      nuevo.precioClipAdd = (it.conClip && D[idx].con_clip_a!==undefined) ? D[idx].con_clip_a - D[idx].a : 0;
+      nuevo.costoUnBase = D[idx].costoNacMt2Usd;
+      recalcPrecioLfEm_(nuevo);
+    } else {
+      // Reabrir: se conservan precio y costo guardados; las bases salen de lo
+      // guardado o, en líneas sin ese dato, dividiendo por el recargo.
+      const f = factorLfEm_(nuevo);
+      // Líneas "con clip" guardadas antes de este cambio no traen precioClipAdd:
+      // se estima con el catálogo vigente para no recargar también el clip.
+      const clipAdd = (it.precioClipAdd!==undefined && it.precioClipAdd!==null && it.precioClipAdd!=='')
+        ? (parseFloat(it.precioClipAdd) || 0)
+        : ((it.conClip && idx>=0 && D[idx].con_clip_a!==undefined) ? D[idx].con_clip_a - D[idx].a : 0);
+      nuevo.precioClipAdd = clipAdd;
+      nuevo.precioMaderaBase = (it.precioMaderaBase!==undefined && it.precioMaderaBase!==null && it.precioMaderaBase!=='')
+        ? parseFloat(it.precioMaderaBase) : (parseFloat(precioLista) - clipAdd) / f;
+      nuevo.costoUnBase = (it.costoUnBase!==undefined && it.costoUnBase!==null && it.costoUnBase!=='')
+        ? parseFloat(it.costoUnBase)
+        : ((costoUn!==undefined && costoUn!==null && costoUn!=='' && !isNaN(parseFloat(costoUn))) ? parseFloat(costoUn) / f : undefined);
+    }
+    return nuevo;
   });
   // Evita colisiones de _itemId con los próximos productos que se agreguen
   cot.items.forEach(it => {
