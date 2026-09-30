@@ -248,6 +248,7 @@
               <option>Christian Holler</option>
             </select>
             <input type="number" id="inComVend" min="0" max="100" step="0.5" value="0" style="width:80px" oninput="renderCart()"> %
+            <button type="button" class="btn btn-ghost" style="padding:2px 8px;font-size:11px;" title="Comisión de 3% (se elige a mano)" onclick="document.getElementById('inComVend').value=3;renderCart()">3%</button>
           </div>
         </div>
         <div>
@@ -1509,6 +1510,7 @@ function setDespMadera(v) {
   const pct = Math.min(Math.max(parseFloat(v)||0, 0), 100);
   cot.despMaderaPct = pct;
   cot.items.forEach(it => { it.desp = pct; recalcCantFact(it); });
+  activarEscalaParky_();
   renderCart();
 }
 
@@ -1655,7 +1657,7 @@ function agregarItem(i) {
   // camino para duplicar una línea ya cargada.
   if (ex && p.con_clip_a===undefined) {
     const nuevaLinea = confirm('"' + p.madera + ' ' + p.perfil + '" ya está en el carrito.\n\nAceptar = agregarlo como LÍNEA NUEVA separada (ej. para otro ambiente, con su propia leyenda/instalación).\nCancelar = sumar 1 a la línea que ya existe.');
-    if (!nuevaLinea) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); renderCart(); return; }
+    if (!nuevaLinea) { ex.cantReal = (parseFloat(ex.cantReal)||0) + 1; recalcCantFact(ex); activarEscalaParky_(); renderCart(); return; }
   }
   const it = {
     _itemId: nextItemId_(),
@@ -1669,6 +1671,7 @@ function agregarItem(i) {
     costoUn: p.costoNacMt2Usd,
     lf: false, em: false, precioMaderaBase: p.a, precioClipAdd: 0, costoUnBase: p.costoNacMt2Usd
   };
+  if (esParkyM2_(it)) { it.escalaPct = 0; activarEscalaParky_(); }
   recalcCantFact(it);
   cot.items.push(it);
   renderCart();
@@ -1700,13 +1703,59 @@ function sufijoLfEm_(it) {
   if (it.em) s.push('EndMatch');
   return s.length ? ' — ' + s.join(' + ') : '';
 }
+// ★ 2026-09-30: escala automática por volumen para Parky (pisos por m²).
+// El escalón sale de la SUMA de m² facturados de todas las líneas Parky en
+// m² de la cotización (los zócalos, por m/l, no suman ni tienen escala). El
+// descuento va sobre el precio de lista (Lista A = costo × 1,65 de la
+// planilla), no sobre el costo, y se recalcula solo cada vez que cambian
+// los m². El precio con escala queda como precioLista de la línea, así que
+// no cuenta como "precio modificado a mano".
+// Líneas Parky de cotizaciones guardadas antes de este cambio no traen
+// escalaPct: conservan su precio hasta que se toque alguna línea Parky.
+const PARKY_ESCALAS = [ // de mayor a menor
+  { n: 4, desde: 3000, pct: 15 },
+  { n: 3, desde: 2000, pct: 10 },
+  { n: 2, desde: 1000, pct: 5 },
+  { n: 1, desde: 0,    pct: 0 }
+];
+function esParkyM2_(it) { return it.cat === 'Parky' && it.u === 'm²'; }
+function parkyM2Total_() {
+  return cot.items.filter(esParkyM2_).reduce((s, it) => s + (parseFloat(it.cant) || 0), 0);
+}
+function escalaParky_(m2) {
+  // redondeo a 4 decimales: que un 999,99999 por el desperdicio no quede en otro escalón
+  const m = Math.round((parseFloat(m2) || 0) * 10000) / 10000;
+  return PARKY_ESCALAS.find(e => m >= e.desde);
+}
+function factorEscala_(it) { return 1 - (parseFloat(it.escalaPct) || 0) / 100; }
+function tieneEscala_(it) { return esParkyM2_(it) && it.escalaPct !== undefined && it.escalaPct !== null && it.escalaPct !== ''; }
+// Suma a la escala las líneas Parky viejas (sin escalaPct). Se llama cuando
+// el vendedor toca cantidades o líneas, nunca al solo reabrir.
+function activarEscalaParky_() {
+  cot.items.forEach(it => { if (esParkyM2_(it) && !tieneEscala_(it)) it.escalaPct = 0; });
+}
+// Pone a cada línea Parky el % del escalón vigente. Si la línea tenía el
+// precio de lista, pasa al nuevo; si estaba pisado a mano, se respeta ese
+// precio y sólo cambia la lista contra la que se compara.
+function aplicarEscalaParky_() {
+  const esc = escalaParky_(parkyM2Total_());
+  cot.items.forEach(it => {
+    if (!tieneEscala_(it) || parseFloat(it.escalaPct) === esc.pct) return;
+    const manual = precioModificado_(it);
+    const precioManual = it.precio;
+    it.escalaPct = esc.pct;
+    recalcPrecioLfEm_(it);
+    if (manual) it.precio = precioManual;
+  });
+}
 // Precio de lista y costo de la línea a partir de sus bases sin recargo
 // (precioMaderaBase / precioClipAdd / costoUnBase, fijadas al crear la línea).
+// En Parky, el descuento por escala va sobre la lista ya recargada.
 function recalcPrecioLfEm_(it) {
   const f = factorLfEm_(it);
   const base = parseFloat(it.precioMaderaBase);
   if (!isNaN(base)) {
-    const lista = Math.round((base * f + (parseFloat(it.precioClipAdd) || 0)) * 10000) / 10000;
+    const lista = Math.round((base * f + (parseFloat(it.precioClipAdd) || 0)) * factorEscala_(it) * 10000) / 10000;
     it.precio = lista;
     it.precioLista = lista;
   }
@@ -1751,9 +1800,10 @@ function setCant(k, v) {
   it.cantReal = parseFloat(v)||0;
   if (it.desp===undefined) it.desp = cot.despMaderaPct||0;
   recalcCantFact(it);
+  activarEscalaParky_();
   renderCart(false);
 }
-function quitarItem(k) { cot.items.splice(k,1); renderCart(); }
+function quitarItem(k) { cot.items.splice(k,1); activarEscalaParky_(); renderCart(); }
 
 // ★ 2026-09-11: agregar el MISMO producto como línea nueva separada (antes
 // clickear el mismo producto en la lista solo sumaba cantidad a la línea
@@ -1766,6 +1816,7 @@ function duplicarItem(k) {
   const nuevoId = nextItemId_();
   const copia = Object.assign({}, original, { _itemId: nuevoId, comentario: '' });
   cot.items.push(copia);
+  activarEscalaParky_();
   // La línea nueva hereda el/los grupo(s) de instalación de la original —
   // si no, quedaría fuera de la instalación sin que nadie lo note.
   (cot.instGrupos||[]).forEach(g => {
@@ -1777,6 +1828,7 @@ function setDespItem(k, v) {
   const it = cot.items[k];
   it.desp = Math.min(Math.max(parseFloat(v)||0, 0), 100);
   recalcCantFact(it);
+  activarEscalaParky_();
   renderCart();
 }
 
@@ -1840,12 +1892,16 @@ function renderRentabilidadReal(t) {
   box.classList.toggle('hidden', !esGerencia);
   if (!esGerencia) return;
 
-  let costoMadera = 0, itemsSinCosto = 0, nombresSinCosto = [];
-  itemsView().filter(it => !it._pseudo && it.cat !== 'Instalación').forEach(it => {
+  let costoMadera = 0, ventaConCosto = 0, itemsSinCosto = 0, nombresSinCosto = [];
+  // Markup efectivo: sobre el precio de lista que se cobra (sin la instalación
+  // integrada) después de escala y descuento de cierre, vs. el costo de madera.
+  cot.items.filter(it => it.cat !== 'Instalación').forEach(it => {
     const cu = parseFloat(it.costoUn);
     if (isNaN(cu)) { itemsSinCosto++; nombresSinCosto.push(it.desc); return; }
     costoMadera += cu * (parseFloat(it.cant) || 0);
+    ventaConCosto += (parseFloat(it.precio) || 0) * (parseFloat(it.cant) || 0) * (1 - t.pct / 100);
   });
+  const markupEf = costoMadera > 0 ? (ventaConCosto / costoMadera - 1) * 100 : null;
 
   const costoInstalacion = MAESTRO ? (cot.instGrupos||[]).reduce((s,I)=>s+instCalcG(I).costoTotal, 0) : 0;
 
@@ -1865,6 +1921,7 @@ function renderRentabilidadReal(t) {
     lineaCosto('Comisión arquitecto/estudio', t.com) +
     lineaCosto('Comisión vendedor', t.comVend) +
     avisoMadera +
+    (markupEf !== null ? `<div class="tot-line"><span>Markup efectivo s/ costo de madera</span><span>${markupEf.toFixed(1)}%</span></div>` : '') +
     `<div class="tot-line big" style="border-top:1px dashed #ccc;margin-top:6px;padding-top:6px;"><span>MARGEN BRUTO</span><span style="color:${margenBruto>=0?'#1a7f37':'#b3261e'};">USD ${fmt(margenBruto)} (${margenPct.toFixed(1)}%)</span></div>` +
     `<div style="font-size:10px;color:#999;margin-top:4px;">No incluye IVA/Ganancias ni estructura de la empresa — mismo criterio que el informe que recibe Nico.</div>`;
 }
@@ -1959,6 +2016,7 @@ async function borrarDocCot(url) {
 }
 
 function renderCart(full) {
+  aplicarEscalaParky_();
   renderDocsCard();
   if (full!==false) {
     const tb = document.getElementById('cartBody');
@@ -1979,6 +2037,11 @@ function renderCart(full) {
         ? `<div class="clip-toggle"><label style="display:inline;cursor:pointer;"><input type="checkbox" ${it.lf?'checked':''} onchange="toggleLfEm(${k},'lf')" style="width:auto"> Largo Fijo (+10%)</label>
            &nbsp;<label style="display:inline;cursor:pointer;"><input type="checkbox" ${it.em?'checked':''} onchange="toggleLfEm(${k},'em')" style="width:auto"> EndMatch (+4%)</label></div>` : '';
       const mergedTag = it._instMerged ? '<div style="font-size:10px;color:#C9A227;font-weight:800">🔧 instalación integrada al precio</div>' : '';
+      const escTag = tieneEscala_(it) ? (() => {
+        const e = PARKY_ESCALAS.find(x => x.pct === parseFloat(it.escalaPct)) || escalaParky_(0);
+        const m2 = fmt(parkyM2Total_(), 0);
+        return `<div style="font-size:10px;color:#2e5d34;font-weight:800">📦 Escala ${e.n} Parky (${m2} m² en la cotización)${e.pct ? ' · −' + e.pct + '% sobre lista' : ' · precio de lista'}</div>`;
+      })() : '';
       const cantReal = it.cantReal!==undefined ? it.cantReal : it.cant;
       // ★ 2026-09-11: desperdicio editable por ítem (antes solo había un %
       // global que se aplicaba a todos los ítems por igual).
@@ -1996,7 +2059,7 @@ function renderCart(full) {
         : `<input class="price-input ${pmod ? (abajo?'pmod-down':'pmod-up') : ''}" type="number" min="0" step="any" value="${Number((parseFloat(it.precio)||0).toFixed(4))}" onchange="setPrecio(${k},this.value)">${badge}`;
       const comentarioHtml = `<input type="text" class="comment-input" placeholder="💬 Comentario para el cliente (aparece en la cotización)" value="${escHtml_(it.comentario||'')}" onchange="setComentarioItem(${k},this.value)">`;
       return `<tr${it._instMerged?' style="background:#FBF3DC;"':''}>
-        <td><b>${it.desc}</b><div style="font-size:11px;color:#888">${it.cat}</div>${clipHtml}${lfEmHtml}${mergedTag}${comentarioHtml}</td>
+        <td><b>${it.desc}</b><div style="font-size:11px;color:#888">${it.cat}</div>${clipHtml}${lfEmHtml}${mergedTag}${escTag}${comentarioHtml}</td>
         <td>${it.medidas}</td>
         <td class="num"><input class="qty-input" type="number" min="0" step="any" value="${cantReal}" onchange="setCant(${k},this.value)"> <small>${it.u}</small>${despInputHtml}</td>
         <td class="num">${precioCell}</td>
@@ -2187,7 +2250,7 @@ async function guardarCotInterno_(estadoForzado) {
       action:'cotSave', token: currentUser.token,
       id: cot.id, estado: cot.estado,
       clienteId: cliente ? cliente.id : '', clienteNombre: clienteNombreFinal, nombreObra: nombreObra,
-      items: itemsView().map(it=>({_itemId:it._itemId, desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||'', costoUn:(it.costoUn!==undefined && it.costoUn!==null && it.costoUn!=='') ? it.costoUn : undefined, lf:!!it.lf, em:!!it.em, precioMaderaBase:it.precioMaderaBase, precioClipAdd:it.precioClipAdd, costoUnBase:it.costoUnBase})),
+      items: itemsView().map(it=>({_itemId:it._itemId, desc:it.desc, cat:it.cat, medidas:it.medidas, u:it.u, precio:it.precio, precioLista:(it.precioLista!==undefined && it.precioLista!==null) ? it.precioLista : it.precio, cant:it.cant, cantReal:it.cantReal, desp:it.desp||0, conClip:it.conClip, comentario:it.comentario||'', costoUn:(it.costoUn!==undefined && it.costoUn!==null && it.costoUn!=='') ? it.costoUn : undefined, lf:!!it.lf, em:!!it.em, precioMaderaBase:it.precioMaderaBase, precioClipAdd:it.precioClipAdd, costoUnBase:it.costoUnBase, escalaPct:tieneEscala_(it) ? it.escalaPct : undefined})),
       instGrupos: instGruposPayload_(),
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
@@ -2555,6 +2618,13 @@ async function abrirCot(id, duplicar) {
     const nuevo = { _itemId: itemId, idx, desc:descBase, cat:it.cat, medidas:it.medidas, u:it.u, precio, precioLista, cant:it.cant,
       cantReal: (it.cantReal!==undefined ? it.cantReal : it.cant), desp: it.desp||0, conClip:!!it.conClip,
       comentario: (duplicar ? '' : (it.comentario || '')), costoUn, lf, em };
+    // Escala Parky: al reabrir se conserva el % guardado (las líneas viejas no
+    // lo traen y quedan fuera de la escala hasta que se toque el carrito); al
+    // duplicar arranca en 0 y renderCart pone el escalón que corresponda.
+    if (esParkyM2_(nuevo)) {
+      if (duplicar) nuevo.escalaPct = 0;
+      else if (it.escalaPct !== undefined && it.escalaPct !== null && it.escalaPct !== '') nuevo.escalaPct = parseFloat(it.escalaPct) || 0;
+    }
     // Bases sin recargo de Largo Fijo / EndMatch (ver recalcPrecioLfEm_).
     if (duplicar && idx>=0) {
       // Duplicar: bases vigentes del catálogo, y se reaplica el recargo.
@@ -2573,7 +2643,7 @@ async function abrirCot(id, duplicar) {
         : ((it.conClip && idx>=0 && D[idx].con_clip_a!==undefined) ? D[idx].con_clip_a - D[idx].a : 0);
       nuevo.precioClipAdd = clipAdd;
       nuevo.precioMaderaBase = (it.precioMaderaBase!==undefined && it.precioMaderaBase!==null && it.precioMaderaBase!=='')
-        ? parseFloat(it.precioMaderaBase) : (parseFloat(precioLista) - clipAdd) / f;
+        ? parseFloat(it.precioMaderaBase) : (parseFloat(precioLista) / factorEscala_(nuevo) - clipAdd) / f;
       nuevo.costoUnBase = (it.costoUnBase!==undefined && it.costoUnBase!==null && it.costoUnBase!=='')
         ? parseFloat(it.costoUnBase)
         : ((costoUn!==undefined && costoUn!==null && costoUn!=='' && !isNaN(parseFloat(costoUn))) ? parseFloat(costoUn) / f : undefined);
