@@ -3245,9 +3245,10 @@ function buildPrint(c, clienteObj) {
       <div class="pr-totales">
         <div class="tl"><span>SUBTOTAL</span><span>USD ${fmtAR(sub)}</span></div>
         ${descPct>0 ? '<div class="tl"><span>DESCUENTO ('+descPct+'%)</span><span>— USD '+fmtAR(desc)+'</span></div>' : ''}
-        <div class="tl big"><span>TOTAL (sin IVA)</span><span>USD ${fmtAR(neto)}</span></div>
-        ${ivaPct>0 ? '<div class="tl" style="font-size:10.5px;color:#555;"><span>IVA ('+String(ivaPct).replace('.',',')+'%): USD '+fmtAR(iva)+'</span><span>Total IVA incluido: USD '+fmtAR(conIva)+'</span></div>' : ''}
-        ${tc>0 ? '<div class="tl pesos"><span>TOTAL PESOS (sin IVA)</span><span>$ '+fmtAR(pesos)+'</span></div>' : ''}
+        ${ivaPct>0 ? '<div class="tl"><span>Subtotal sin IVA</span><span>USD '+fmtAR(neto)+'</span></div>' : ''}
+        ${ivaPct>0 ? '<div class="tl" style="font-size:10.5px;color:#555;"><span>IVA ('+String(ivaPct).replace('.',',')+'%)</span><span>USD '+fmtAR(iva)+'</span></div>' : ''}
+        <div class="tl big"><span>TOTAL A PAGAR${ivaPct>0?' (IVA incl.)':''}</span><span>USD ${fmtAR(conIva)}</span></div>
+        ${tc>0 ? '<div class="tl pesos"><span>TOTAL PESOS A PAGAR'+(ivaPct>0?' (IVA incl.)':'')+'</span><span>$ '+fmtAR(conIva*tc)+'</span></div>' : ''}
       </div>
     </div>
 
