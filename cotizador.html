@@ -305,13 +305,18 @@
     </div>
 
     <div class="card" id="cardDocs">
-      <h3>📎 Documentos <span style="font-size:11px;color:#999;font-weight:400">· planos, referencias, lo que haga falta para esta cotización</span></h3>
-      <div id="docsSinGuardar" class="hidden" style="font-size:12px;color:#999;">Guardá la cotización primero (botón Guardar, más abajo) para poder subir documentos.</div>
+      <h3>📎 Documentos y fotos <span style="font-size:11px;color:#999;font-weight:400">· fotos de la obra, planos, referencias — al aprobar se copian al Portal (pestaña Fotos)</span></h3>
+      <div id="docsSinGuardar" class="hidden" style="font-size:12px;color:#999;margin-bottom:6px;">Todavía no está guardada: las fotos que elijas quedan en espera y se suben solas al guardar.</div>
       <div id="docsUploadWrap">
         <input type="file" id="cotDocInput" multiple onchange="subirDocsCot()">
         <div class="status-msg" id="cotDocStatus"></div>
       </div>
       <div id="cotDocsList" style="margin-top:10px;"></div>
+
+      <div style="margin-top:16px;">
+        <label>📝 Informe previo <span style="color:#999;font-weight:400">(interno — NO va al PDF del cliente; al aprobar pasa al Portal de Obras, arriba del H1)</span></label>
+        <textarea id="inInformePrevio" rows="5" style="width:100%;font:inherit;padding:8px;" placeholder="Lo que se vio antes de cotizar: estado del lugar, medidas tomadas, accesos, humedad, pedidos del cliente, riesgos…" oninput="guardarBorradorLocal()"></textarea>
+      </div>
     </div>
 
     <div class="card">
@@ -614,7 +619,8 @@
     </div>
     <label style="font-size:12px;font-weight:700;">Últimos comentarios para la visita (van en el mail a Paco)</label>
     <textarea id="apComentario" rows="3" style="width:100%;margin:4px 0 12px;padding:8px;border:1px solid #ddd;border-radius:8px;font:inherit;" placeholder="Ej: coordinar con el encargado del edificio, hay que subir por escalera de servicio…"></textarea>
-    <label style="font-size:12px;font-weight:700;">Planos y fotos de la obra (van al Drive y a la pestaña Fotos del portal)</label>
+    <label style="font-size:12px;font-weight:700;">Más planos y fotos de la obra (van al Drive y a la pestaña Fotos del portal)</label>
+    <div style="font-size:11.5px;color:#888;margin:2px 0 4px;">Lo que ya está en 📎 Documentos y fotos de la cotización se copia solo, y el 📝 Informe previo pasa al H1 — acá sólo lo que falte.</div>
     <input type="file" id="apArchivos" multiple accept="image/*,.pdf,.dwg,.dxf" style="display:block;margin:6px 0 4px;">
     <div id="apArchivosInfo" style="font-size:11.5px;color:#888;margin-bottom:14px;"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -1217,7 +1223,7 @@ let cotSuccessBanner_ = '';
 let cot = nuevaCotObj();
 
 function nuevaCotObj() {
-  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', estudioId:'', nombreObra:'', direccionObra:'', notas:'', instGrupos:[], adjuntos:[] };
+  return { id:null, estado:'Borrador', clienteId:'', items:[], descPct:0, despMaderaPct:0, comisionArq:false, comisionArqPct:5, estudioArq:'', estudioId:'', nombreObra:'', direccionObra:'', notas:'', informePrevio:'', instGrupos:[], adjuntos:[] };
 }
 
 // ---------- Login ----------
@@ -1864,17 +1870,26 @@ function renderRentabilidadReal(t) {
 }
 
 // ---------- Documentos de la cotización ----------
+// ★ 2026-10-01: se pueden elegir fotos/documentos ANTES de guardar. Quedan
+// en memoria (docsPendientes_, no en localStorage: son archivos) y
+// guardarCotInterno_ los sube apenas la cotización tiene número.
+let docsPendientes_ = [];
 function renderDocsCard() {
   const sinGuardar = !cot.id;
   const elSin = document.getElementById('docsSinGuardar');
   const elWrap = document.getElementById('docsUploadWrap');
   if (!elSin || !elWrap) return; // todavía no está en el DOM (login no hecho)
   elSin.classList.toggle('hidden', !sinGuardar);
-  elWrap.classList.toggle('hidden', sinGuardar);
   const items = cot.adjuntos || [];
-  document.getElementById('cotDocsList').innerHTML = items.length === 0
+  const pendHtml = docsPendientes_.map((f, i) => `
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #333;">
+          <span style="flex:1;color:#ccc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml_(f.name)}</span>
+          <span style="font-size:11px;color:#C9A227;white-space:nowrap;">⏳ se sube al guardar</span>
+          <button class="btn btn-ghost" style="padding:2px 8px;font-size:11px;" onclick="quitarDocPendiente(${i})">✕</button>
+        </div>`).join('');
+  document.getElementById('cotDocsList').innerHTML = (items.length === 0 && !docsPendientes_.length)
     ? '<div style="color:#999;font-size:12px;">Sin documentos todavía.</div>'
-    : items.map(f => `
+    : pendHtml + items.map(f => `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #333;">
           <a href="${escHtml_(f.url)}" target="_blank" style="flex:1;color:#C9A227;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml_(f.name)}</a>
           <span style="font-size:11px;color:#888;white-space:nowrap;">${escHtml_(f.uploadedBy||'')} · ${f.uploadedAt ? new Date(f.uploadedAt).toLocaleDateString('es-AR') : ''}</span>
@@ -1886,8 +1901,30 @@ function subirDocsCot() {
   const input = document.getElementById('cotDocInput');
   const files = Array.from(input.files || []);
   if (!files.length) return;
-  if (!cot.id) { alert('Guardá la cotización primero.'); return; }
+  if (!cot.id) {
+    docsPendientes_ = docsPendientes_.concat(files);
+    input.value = '';
+    renderDocsCard();
+    return;
+  }
   subirDocsCotSecuencial(files, document.getElementById('cotDocStatus'));
+}
+function quitarDocPendiente(i) {
+  docsPendientes_.splice(i, 1);
+  renderDocsCard();
+}
+// Sube lo que quedó en espera; devuelve false si alguno falló (se avisa en
+// guardarCotInterno_ para que se vuelvan a elegir).
+async function subirDocsPendientes_() {
+  if (!cot.id || !docsPendientes_.length) return true;
+  const files = docsPendientes_.slice();
+  const status = document.getElementById('cotDocStatus');
+  const antes = (cot.adjuntos || []).length;
+  await subirDocsCotSecuencial(files, status);
+  const subidos = (cot.adjuntos || []).length - antes;
+  docsPendientes_ = files.slice(subidos);
+  renderDocsCard();
+  return docsPendientes_.length === 0;
 }
 async function subirDocsCotSecuencial(files, status) {
   for (let i = 0; i < files.length; i++) {
@@ -2013,6 +2050,8 @@ function guardarBorradorLocal() {
   cot.nombreObra = document.getElementById('inNombreObra').value;
   cot.direccionObra = document.getElementById('inDireccionObra').value;
   cot.notas = document.getElementById('inNotas').value;
+  const elInf = document.getElementById('inInformePrevio');
+  if (elInf) cot.informePrevio = elInf.value;
   cot.vendedor = document.getElementById('inVend').value;
   cot.comVendPct = parseFloat(document.getElementById('inComVend').value)||0;
   cot.condPago = document.getElementById('inCondPago').value;
@@ -2038,6 +2077,7 @@ function restaurarBorradorLocal() {
       document.getElementById('inNombreObra').value = cot.nombreObra||'';
       document.getElementById('inDireccionObra').value = cot.direccionObra||'';
       document.getElementById('inNotas').value = cot.notas||'';
+      document.getElementById('inInformePrevio').value = cot.informePrevio||'';
       document.getElementById('inVend').value = cot.vendedor || 'Franco Faggioni';
       document.getElementById('inComVend').value = (cot.comVendPct!==undefined && cot.comVendPct!==null && cot.comVendPct!=='') ? cot.comVendPct : defaultComVend(document.getElementById('inVend').value);
       setPdfFields(cot);
@@ -2075,6 +2115,8 @@ function nuevaCot() {
   document.getElementById('inNombreObra').value = '';
   document.getElementById('inDireccionObra').value = '';
   document.getElementById('inNotas').value = '';
+  document.getElementById('inInformePrevio').value = '';
+  docsPendientes_ = [];
   const vd = (currentUser && currentUser.usuario === 'Franco') ? 'Franco Faggioni' : 'Christian Holler';
   document.getElementById('inVend').value = vd;
   document.getElementById('inComVend').value = defaultComVend(vd);
@@ -2150,7 +2192,7 @@ async function guardarCotInterno_(estadoForzado) {
       vendedor: cot.vendedor || document.getElementById('inVend').value,
       comVendPct: cot.comVendPct || 0,
       padreId: cot.padreId || '',
-      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, comisionArqPct: cot.comisionArqPct||0, estudioId: cot.estudioId||'', direccionObra: cot.direccionObra||'', notas: cot.notas,
+      descPct: cot.descPct, despMaderaPct: cot.despMaderaPct||0, comisionArq: cot.comisionArq, comisionArqPct: cot.comisionArqPct||0, estudioId: cot.estudioId||'', direccionObra: cot.direccionObra||'', notas: cot.notas, informePrevio: cot.informePrevio||'',
       condPago: cot.condPago, validez: cot.validez, lugarEnt: cot.lugarEnt,
       plazoEnt: cot.plazoEnt, transEnt: cot.transEnt, ivaPct: cot.ivaPct, tc: cot.tc
     });
@@ -2158,6 +2200,13 @@ async function guardarCotInterno_(estadoForzado) {
     cot.id = r.id;
     document.getElementById('cotTitle').textContent = 'Editando ' + cot.id;
     renderDocsCard(); // recién con id asignado se puede subir documentos
+    if (docsPendientes_.length) {
+      msg.textContent = 'Guardada como ' + cot.id + ' · subiendo ' + docsPendientes_.length + ' foto(s)/documento(s)…';
+      const okDocs = await subirDocsPendientes_();
+      msg.textContent = '';
+      if (!okDocs) alert('⚠ ' + cot.id + ' quedó guardada, pero ' + docsPendientes_.length + ' foto(s)/documento(s) no se pudieron subir (ver el error en 📎 Documentos y fotos). Volvé a elegirlos ahí para subirlos.');
+      if (!okDocs) { docsPendientes_ = []; renderDocsCard(); }
+    }
     aprenderOpciones();
     localStorage.removeItem('kk_cot_draft');
     cargarCots();
@@ -2444,6 +2493,8 @@ async function abrirCot(id, duplicar) {
   instActivo = 0;
   cot.id = duplicar ? null : c.id;
   cot.estado = duplicar ? 'Borrador' : c.estado;
+  cot.informePrevio = c.informePrevio || ''; // el informe previo describe la obra: se conserva también al duplicar
+  docsPendientes_ = [];
   cot.adjuntos = duplicar ? [] : (c.adjuntos || []); // los documentos no se copian al duplicar/versionar — quedan ligados a la cotización original
   cot.notas = c.notas;
   cot.descPct = c.descPct;
@@ -2542,6 +2593,7 @@ async function abrirCot(id, duplicar) {
   document.getElementById('inNombreObra').value = cot.nombreObra || '';
   document.getElementById('inDireccionObra').value = cot.direccionObra || '';
   document.getElementById('inNotas').value = cot.notas||'';
+  document.getElementById('inInformePrevio').value = cot.informePrevio||'';
   cot.condPago = c.condPago; cot.validez = c.validez; cot.lugarEnt = c.lugarEnt;
   cot.plazoEnt = c.plazoEnt; cot.transEnt = c.transEnt; cot.ivaPct = c.ivaPct; cot.tc = c.tc;
   cot.comVendPct = c.comVendPct;
@@ -2629,7 +2681,7 @@ async function confirmarAprobacion() {
   document.getElementById('modalAprobar').classList.add('hidden');
   modalAprobarId = null;
   if (!r.ok) { alert('Error: ' + r.error); cargarCots(); return; }
-  if (r.obraCodigo) alert('✓ ' + id + ' aprobada.\nSe creó la obra ' + r.obraCodigo + ' en el Portal (H3 y costo planificado precargados' + (r.adjuntos ? ', ' + r.adjuntos + ' archivo(s) subidos al Drive' : '') + ').\nAvisos enviados a Nicolás, Sandra y Paco.');
+  if (r.obraCodigo) alert('✓ ' + id + ' aprobada.\nSe creó la obra ' + r.obraCodigo + ' en el Portal (H3 y costo planificado precargados' + (r.adjuntos ? ', ' + r.adjuntos + ' archivo(s) subidos al Drive' : '') + (r.adjuntosCot ? ', ' + r.adjuntosCot + ' foto(s)/documento(s) de la cotización copiados' : '') + ').\nAvisos enviados a Nicolás, Sandra y Paco.');
   if (r.obraError) alert('⚠ ' + r.obraError);
   cargarCots();
 }
