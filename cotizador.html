@@ -27,11 +27,12 @@
   input, select, textarea { padding:8px 10px; border:1px solid #d8cfbd; border-radius:7px; font-size:14px; background:#fff; font-family:inherit; }
   input:focus, select:focus, textarea:focus { outline:2px solid #C9A227; border-color:#C9A227; }
   label { font-size:12px; color:#777; display:block; margin-bottom:3px; }
-  .btn { padding:9px 16px; border:none; border-radius:7px; cursor:pointer; font-weight:700; font-size:13px; }
+  .btn { padding:9px 16px; border:none; border-radius:7px; cursor:pointer; font-weight:700; font-size:13px; transition:transform .08s ease, opacity .08s ease; }
   .btn-gold { background:#C9A227; color:#111; }
   .btn-dark { background:#111; color:#fff; }
   .btn-ghost { background:transparent; color:#555; border:1px solid #ccc; }
   .btn-danger { background:transparent; color:#b33; border:1px solid #e0b8b8; }
+  .btn:active:not(:disabled) { transform:scale(0.96); opacity:.8; }
   .btn:disabled { opacity:.4; cursor:default; }
 
   /* ===== Instalación ===== */
