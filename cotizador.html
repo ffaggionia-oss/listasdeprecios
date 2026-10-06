@@ -225,6 +225,7 @@
       <div class="grid2">
         <div>
           <label>Cliente <span style="color:#999;font-weight:400">(opcional si todavía no tenés el comitente — cargá el estudio y el nombre de la obra)</span></label>
+          <input type="text" id="buscarSelCliente" placeholder="Escribí para filtrar…" style="width:100%;font-size:12.5px;margin-bottom:4px;" oninput="renderClientes()">
           <div style="display:flex;gap:6px;">
             <select id="selCliente" style="flex:1" onchange="clienteCambiadoCot()"></select>
             <button class="btn btn-ghost" onclick="abrirNuevoCliente()">+ Nuevo</button>
@@ -2836,10 +2837,19 @@ async function cargarClientes() {
 
 function renderClientes() {
   const sel = document.getElementById('selCliente');
-  const val = sel.value;
+  const idActual = sel.value || cot.clienteId || '';
+  const q = (document.getElementById('buscarSelCliente').value || '').trim().toLowerCase();
+  let filtrados = q ? CLIENTES.filter(c => (c.razonSocial||'').toLowerCase().includes(q) || (c.cuit||'').includes(q)) : CLIENTES;
+  // El cliente ya elegido nunca se filtra fuera, aunque no matchee la búsqueda
+  // (si no, guardarBorradorLocal/guardarCotizacion leerían selCliente.value
+  // vacío y se perdería el cliente ya seleccionado de la cotización).
+  if (idActual && !filtrados.some(c => c.id === idActual)) {
+    const actual = CLIENTES.find(c => c.id === idActual);
+    if (actual) filtrados = [actual].concat(filtrados);
+  }
   sel.innerHTML = '<option value="">— Elegir cliente —</option>' +
-    CLIENTES.map(c=>`<option value="${c.id}">${c.razonSocial}${c.cuit?' ('+c.cuit+')':''}</option>`).join('');
-  sel.value = val || cot.clienteId || '';
+    filtrados.map(c=>`<option value="${c.id}">${c.razonSocial}${c.cuit?' ('+c.cuit+')':''}</option>`).join('');
+  sel.value = idActual;
   mostrarCuitSeleccionado();
   document.getElementById('cliList').innerHTML = CLIENTES.map(c=>`
     <div class="cot-row">
