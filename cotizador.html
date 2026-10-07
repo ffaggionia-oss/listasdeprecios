@@ -246,9 +246,10 @@
             <select id="inVend" style="flex:1" onchange="vendCambiado()">
               <option>Franco Faggioni</option>
               <option>Christian Holler</option>
+              <option>Sandra Molina</option>
             </select>
             <input type="number" id="inComVend" min="0" max="100" step="0.5" value="0" style="width:80px" oninput="renderCart()"> %
-            <button type="button" class="btn btn-ghost" style="padding:2px 8px;font-size:11px;" title="Comisión de 3% (se elige a mano)" onclick="document.getElementById('inComVend').value=3;renderCart()">3%</button>
+            <button type="button" class="btn btn-ghost" style="padding:2px 8px;font-size:11px;" id="btnComVend3" title="Comisión de 3% (se elige a mano)" onclick="document.getElementById('inComVend').value=3;renderCart()">3%</button>
           </div>
         </div>
         <div>
@@ -489,7 +490,7 @@
         </select>
         <select id="cotVendFilter" onchange="renderCotList()">
           <option value="">Todos los vendedores</option>
-          <option>Franco Faggioni</option><option>Christian Holler</option>
+          <option>Franco Faggioni</option><option>Christian Holler</option><option>Sandra Molina</option>
         </select>
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;">
           <input type="checkbox" id="cotSoloSeg" onchange="renderCotList()" style="width:auto"> ⏰ +10 días
@@ -1254,7 +1255,7 @@ async function iniciarApp() {
   document.getElementById('tab-catalogo').classList.toggle('hidden', currentUser.rol !== 'gerencia');
   traerTC(true);
   if (!localStorage.getItem('kk_cot_draft')) {
-    const vd0 = currentUser.usuario.indexOf('Christian') === 0 ? 'Christian Holler' : 'Franco Faggioni';
+    const vd0 = vendedorDeUsuario();
     document.getElementById('inVend').value = vd0;
     document.getElementById('inComVend').value = defaultComVend(vd0);
   }
@@ -1874,7 +1875,7 @@ function totales() {
   const arq = document.getElementById('inArq').checked;
   const arqPct = Math.min(Math.max(parseFloat(document.getElementById('inArqPct').value)||0,0),100);
   const com = arq ? total*arqPct/100 : 0;
-  const comVendPct = Math.min(Math.max(parseFloat(document.getElementById('inComVend').value)||0,0),100);
+  const comVendPct = sinComisionVend(document.getElementById('inVend').value) ? 0 : Math.min(Math.max(parseFloat(document.getElementById('inComVend').value)||0,0),100);
   const comVend = total*comVendPct/100;
   return { sub, pct, desc, total, arq, arqPct, com, comVendPct, comVend, neto: total-com-comVend };
 }
@@ -2016,6 +2017,7 @@ async function borrarDocCot(url) {
 }
 
 function renderCart(full) {
+  bloquearComVend();
   aplicarEscalaParky_();
   renderDocsCard();
   if (full!==false) {
@@ -2116,7 +2118,7 @@ function guardarBorradorLocal() {
   const elInf = document.getElementById('inInformePrevio');
   if (elInf) cot.informePrevio = elInf.value;
   cot.vendedor = document.getElementById('inVend').value;
-  cot.comVendPct = parseFloat(document.getElementById('inComVend').value)||0;
+  cot.comVendPct = sinComisionVend(cot.vendedor) ? 0 : (parseFloat(document.getElementById('inComVend').value)||0);
   cot.condPago = document.getElementById('inCondPago').value;
   cot.validez = parseInt(document.getElementById('inValidez').value)||7;
   cot.lugarEnt = document.getElementById('inLugarEnt').value;
@@ -2150,6 +2152,24 @@ function restaurarBorradorLocal() {
 }
 
 function defaultComVend(v) { return v === 'Christian Holler' ? 8 : 0; }
+// ★ 2026-10-07: Sandra cotiza y vende como Franco (con instalación) pero sin
+// comisión — con ella como vendedora el % queda en 0 y bloqueado.
+const VEND_SIN_COMISION = ['Sandra Molina'];
+function sinComisionVend(v) { return VEND_SIN_COMISION.indexOf(v) !== -1; }
+function bloquearComVend() {
+  const sin = sinComisionVend(document.getElementById('inVend').value);
+  const el = document.getElementById('inComVend');
+  if (sin) el.value = 0;
+  el.disabled = sin;
+  document.getElementById('btnComVend3').disabled = sin;
+}
+// Vendedor por defecto = el usuario logueado si está en la lista de
+// vendedores (Franco, Christian, Sandra); si no, Franco.
+function vendedorDeUsuario() {
+  const u = String((currentUser && currentUser.usuario) || '').split(' ')[0];
+  const ops = Array.from(document.getElementById('inVend').options).map(o => o.value);
+  return ops.find(v => u && v.indexOf(u) === 0) || 'Franco Faggioni';
+}
 function vendCambiado() {
   document.getElementById('inComVend').value = defaultComVend(document.getElementById('inVend').value);
   renderCart();
@@ -2180,7 +2200,7 @@ function nuevaCot() {
   document.getElementById('inNotas').value = '';
   document.getElementById('inInformePrevio').value = '';
   docsPendientes_ = [];
-  const vd = (currentUser && currentUser.usuario === 'Franco') ? 'Franco Faggioni' : 'Christian Holler';
+  const vd = vendedorDeUsuario();
   document.getElementById('inVend').value = vd;
   document.getElementById('inComVend').value = defaultComVend(vd);
   setPdfFields({});
@@ -2667,7 +2687,7 @@ async function abrirCot(id, duplicar) {
   cot.condPago = c.condPago; cot.validez = c.validez; cot.lugarEnt = c.lugarEnt;
   cot.plazoEnt = c.plazoEnt; cot.transEnt = c.transEnt; cot.ivaPct = c.ivaPct; cot.tc = c.tc;
   cot.comVendPct = c.comVendPct;
-  document.getElementById('inVend').value = c.vendedor || ((currentUser && currentUser.usuario==='Franco') ? 'Franco Faggioni' : 'Christian Holler');
+  document.getElementById('inVend').value = c.vendedor || vendedorDeUsuario();
   document.getElementById('inComVend').value = (c.comVendPct!==undefined && c.comVendPct!==null && c.comVendPct!=='') ? c.comVendPct : defaultComVend(document.getElementById('inVend').value);
   setPdfFields(cot);
   document.getElementById('selCliente').value = cot.clienteId||'';
