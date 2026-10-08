@@ -221,7 +221,10 @@
   <!-- ===== TAB NUEVA ===== -->
   <div id="pane-nueva">
     <div class="card" id="cotHeaderCard">
-      <h3 id="cotTitle">Nueva cotización</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+        <h3 id="cotTitle" style="margin:0;">Nueva cotización</h3>
+        <button class="btn btn-ghost" onclick="nuevaCot()" title="Vacía el carrito y el formulario para empezar una cotización en blanco">🧹 Limpiar / nueva</button>
+      </div>
       <div class="grid2">
         <div>
           <label>Cliente <span style="color:#999;font-weight:400">(opcional si todavía no tenés el comitente — cargá el estudio y el nombre de la obra)</span></label>
